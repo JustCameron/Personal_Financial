@@ -1,0 +1,37 @@
+body {
+    background-color: #343a40;
+    
+}
+/*.navbar{}
+
+html{
+    filter: invert(1) hue-rotate(180deg);
+}
+
+img{
+    filter: invert(1) hue-rotate(180deg);
+}
+*/
+
+#Carousel2 img{
+    max-height: 650px;
+}
+.xcontainer{
+    min-width:1024px;
+    
+}
+
+p{
+    color: aliceblue;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+body::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Hide scrollbar for IE, Edge and Firefox */
+  body{
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }

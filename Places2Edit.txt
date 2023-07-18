@@ -1,0 +1,16 @@
+for (var expense in appState.expenseList) //Get all expenses //I would pull from python here
+
+//  ADD EXPENSE TO EXPENSE LIST  //I would Push to python here
+
+MaterialPageRoute(builder: (context) => SignUpPage()) //Right here we validate the data.
+
+onPressed: (){ //After clicking Login   // all add user info FROM DB HERE
+
+tooltip: 'Complete', onPressed: () { // Go to home page //I would add data here
+
+
+//SUBSCRIPTION EXPENSE TEXT FIELD   //Dis kinda sus still.
+
+child: Text('Income for Today'),  //Dis also kinda sus
+
+//  ADD INCOME TO INCOME LIST
