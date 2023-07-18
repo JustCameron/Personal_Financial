@@ -3,6 +3,8 @@ import 'dart:io';
 //import 'package:tuple/tuple.dart';
 import 'dart:developer';
 import 'dart:math';
+import 'dart:ui';
+import 'package:collection/collection.dart';
 import 'package:pie_chart/pie_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -47,8 +49,15 @@ class MyAppState extends ChangeNotifier {
   var expenseCostList = [];
   var incomeList = [];
   var incomeValueList = [];
+  var expenseTypeList = [];
+  var rankList = [];
+  var expenseFreqList = [];
   List<String> creditCardList = <String>['Mastercard', 'Scotia', 'Sagicor', 'Paypal'];
   List<String> marriedOrSingleList = <String>['Single', 'Married'];
+  List<String> wantORneed = <String>['Want', 'Need'];
+  List<String> rankTiers = <String>['T1', 'T2', 'T3'];
+  List<String> expenseFrequency = <String>['One-Time', 'Monthly'];
+  List<String> incomeFrequency = <String>['One-Time', 'Monthly'];
   //User Inputs
   double annualincome = 0.00;
   double livingexpense = 0.00;
@@ -63,6 +72,10 @@ class MyAppState extends ChangeNotifier {
   double income = 0.00;
   var creditcard = "Mastercard  ";
   var singlemarried = "Single";
+  var wantORneedchoice = "Want";
+  var ranks = "T1";
+  var expenseFreq = "One-Time";
+  var incomeFreq = "One-Time";
   DateTime selectedDate = DateTime.now();
   String expenseName = "";
   String incomeName = "";
@@ -84,7 +97,33 @@ class MyAppState extends ChangeNotifier {
   bool? check10 = false;
   bool? check11 = false;
   bool? check12 = false;
-  
+  //Icons
+  Icon type = Icon(
+    Icons.store_mall_directory,
+    color: Colors.blueAccent,
+  );
+  Icon wantneedIcon = Icon(
+    Icons.store_mall_directory,
+    color: Colors.blueAccent,
+  );
+  Icon rankIcon = Icon(
+    Icons.looks_one,
+    color: Color.fromARGB(255, 180, 166, 35),
+  );
+  Icon frequencyIcon = Icon(
+    Icons.one_x_mobiledata_outlined,
+    color: Colors.blueGrey,
+  );
+  Icon incomeFrequencyIcon = Icon(
+    Icons.one_x_mobiledata_outlined,
+    color: Colors.blueGrey,
+  );
+  //Miscs
+  double currExpCost = 0.00;
+  double currIncCost = 0.00;
+  var currExpName = "";
+  var currIncName = "";
+
   void removeExpense(exp){ //Remove clicked Expense from Expense List
     expenseList.remove(exp);
     //   appState.balance -= appState.expenseCost; // subtract expense from balance
@@ -95,16 +134,29 @@ class MyAppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void removeIncome(inc){ //Remove clicked Expense from Expense List
+   removeIncome(inc){ //Remove clicked Income from Income List
     incomeList.remove(inc);
     //   appState.balance -= appState.expenseCost; // subtract expense from balance
     // appState.spent += appState.expenseCost; // add expense cost to spent
-    balance -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // add removed expense cost to balance [replaceAll is used here to only get the numbers from the String]
-    income -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // subtract removed expense cost from spent [replaceAll is used here to only get the numbers from the String]
+    balance -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // minus removed income from balance [replaceAll is used here to only get the numbers from the String]
+    income -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // subtract removed income [replaceAll is used here to only get the numbers from the String]
     //print (double.parse(exp.replaceAll(RegExp(r'[^0-9,.]'),'')));
     notifyListeners();
   }
 
+  double getExpenseCost(exp){ //Remove clicked Income from Income List
+    var where = expenseList.indexOf(exp);
+    currExpCost = double.parse(expenseList[where].replaceAll(RegExp(r'[^0-9,.]'),''));
+    // notifyListeners();
+    return currExpCost;
+  }
+
+  String getExpenseName(exp){ //Remove clicked Income from Income List
+    var where = expenseList.indexOf(exp);
+    currExpName = expenseList[where].replaceAll(RegExp(r'[^a-z,^A-Z]'),'');
+    // notifyListeners();
+    return currExpName;
+  }
 
 }
 class MyHomePage extends StatefulWidget {
@@ -1036,16 +1088,33 @@ class _DashboardPageState extends State<DashboardPage> {
     
     var theme = Theme.of(context);
     var appState = context.watch<MyAppState>();
+
+    String want_need_dropdownValue = appState.wantORneed.first;
+    String rank_dropdownValue = appState.rankTiers.first;
+    String expense_freq_dropdownValue = appState.expenseFrequency.first;
+    String income_freq_dropdownValue = appState.incomeFrequency.first;
+
+    var columnsThereYN = 0;
+    late Icon wantneedIcon;
+    late Icon rankIcon;
+    late Icon frequencyIcon;
+    late Icon incomeFrequencyIcon;
+    late String type;
+
+    var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList]);
+
     final addExpenseNameController = TextEditingController();
     final addExpenseCostController = TextEditingController();
     final addIncomeNameController = TextEditingController();
     final addIncomeValueController = TextEditingController();
+
 
     String addExpenseName;
     String addExpenseCost;
     String addIncomeName;
     String addIncomeValue;
     String fullexpense;
+    var currentExpense;
     //appState.expenseList.add("1000.00");
 
     return Scaffold(
@@ -1254,7 +1323,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: SizedBox(
-                          width: 790,
+                          width: 920,
                           height: 45,
                           child: TextField(
                             style: TextStyle(
@@ -1282,7 +1351,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: Align( //align container
                           alignment: Alignment.centerLeft,
                           child: Container(
-                            width: 790,
+                            width: 920,
                             decoration: BoxDecoration(
                               border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
                               borderRadius: BorderRadius.all(Radius.circular(5))
@@ -1290,14 +1359,65 @@ class _DashboardPageState extends State<DashboardPage> {
                             child: Align( //align everything inside box
                               alignment: Alignment.centerLeft,
                               child: SizedBox(
-                                width: 780,
+                                width: 920,
                                 child: Column(
                                   children: [
+                                    if (appState.expenseList.isNotEmpty) //Displays Columns if list isn't emtpy
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            // flex: 2,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(left:15),
+                                              child: Text("NAME", //Specifically gets the Name
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded( //Specifically gets the Cost
+                                            // flex: 5,
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text("COST", //Specifically gets the Name
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded( //Specifically gets the Cost
+                                            // flex: 1,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text("W/N    RANK    FREQ     DEL      ", //Specifically gets the Name
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    
                                     if (appState.expenseList != []) //Displays Expenses if list isn't emtpy
-                                      for (var expense in appState.expenseList) //Get all expenses
+                                      for (var tuple in zippedLists)//Get all expenses
+                                        // 1st = Expense, 2nd = Want/Need, 3rd = Rank, 4th = Frequency
                                         Row(
                                           children: [
                                             //  Money Icon and Expense Text Part
+                                              Expanded(
+                                                // flex: 2,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(left: 15),
+                                                  child: Text(appState.getExpenseName(tuple.first), //Specifically gets the Name
+                                                    style: TextStyle(
+                                                      color: Colors.deepOrangeAccent,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 left: 5,
@@ -1306,9 +1426,15 @@ class _DashboardPageState extends State<DashboardPage> {
                                               color: Colors.deepOrangeAccent,
                                               ),
                                             ),
-                                            Text(expense,
-                                              style: TextStyle(
-                                                color: Colors.deepOrangeAccent,
+                                            Expanded( //Specifically gets the Cost
+                                              // flex: 2,
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(appState.getExpenseCost(tuple.first).toString(), //Specifically gets the Name
+                                                  style: TextStyle(
+                                                    color: Colors.deepOrangeAccent,
+                                                  ),
+                                                ),
                                               ),
                                             ),
 
@@ -1316,19 +1442,32 @@ class _DashboardPageState extends State<DashboardPage> {
                                             Expanded( // Aligns it nicely to the right
                                               child: Align(
                                                 alignment: Alignment.centerRight,
-                                                child: TextButton( // Expense Button To Delete
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      appState.removeExpense(expense);
-                                                      //print(appState.expenseList);
-                                                    });
-                                                  },
-                                              
-                                                  child: Icon(Icons.delete,
-                                                    size: 20,
-                                                    color: Colors.red,
-                                                  ),
-                                                  ),
+                                                child: Row(
+                                                  children: [
+                                                    SizedBox(width: 93,),
+                                                    tuple.elementAt(1), // Want/Need Icon
+                                                    SizedBox(width: 25,),
+                                                    tuple.elementAt(2), // Rank Icon
+                                                    SizedBox(width: 28,),
+                                                    tuple.elementAt(3), // Frequency Icon
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(left: 10),
+                                                      child: TextButton( // Expense Button To Delete
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            appState.removeExpense(tuple.first);
+                                                            //print(appState.expenseList);
+                                                          });
+                                                        },
+                                                                                                  
+                                                        child: Icon(Icons.delete,
+                                                          size: 20,
+                                                          color: Colors.red,
+                                                        ),
+                                                        ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -1360,7 +1499,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: Align(
                             alignment: Alignment.centerLeft, //aligns container
                             child: Container(
-                              width: 790,
+                              width: 920,
                               decoration: BoxDecoration(
                                 border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
                                 borderRadius: BorderRadius.all(Radius.circular(5))
@@ -1554,6 +1693,345 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),     
 
+
+                    Padding(                          //WANT OR NEED POP UP/DROP DOWN MENU
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        right: 0,
+                        top: 0,
+                        bottom: 20,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+              
+                        //    WANT/NEED POP UP/DROP DOWN MENU 
+                        child: Container(
+                          width: 90,
+                          height: 40,
+                          decoration: BoxDecoration( // Adds border
+                            border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+                            borderRadius: BorderRadius.all(Radius.circular(50))
+                          ),
+                          child: PopupMenuButton( //Create pop up menu
+                            constraints: const BoxConstraints.tightFor(width: 100, height: 100), //Control width and height of dropdown button when clicked. Also creates a scrollable environment
+                            shape: RoundedRectangleBorder( //Change border for menu
+                            side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
+                            borderRadius: BorderRadius.all(Radius.circular(10.0))
+                            ), 
+                            // Configure pop up menu
+                            itemBuilder: (context) {
+                              return appState.wantORneed.map((str) { // Create drop down menu items from given list
+                                return PopupMenuItem(
+                                  value: str,
+                                  child: Row(
+                                    children: [
+                                      Text(str,
+                                        //little bit of style for the text
+                                        style: TextStyle(
+                                          fontFamily: 'Nato Sans',
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      if (str == "Want") //Different WANT/NEED Symbols
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5),
+                                          child: wantneedIcon = Icon(
+                                             Icons.store_mall_directory,
+                                            color: Colors.blueAccent,
+                                          ),
+                                        )
+                                      else
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5),
+                                          child: wantneedIcon = Icon(
+                                            Icons.house,
+                                            color: Colors.green
+                                            ),
+                                        )
+                                      
+                                    ],
+                                  ),
+                                  
+                                );
+                              }).toList();
+                            },
+              
+                            child: Row( // Displayed Choice and Icon
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                  ),
+                                  child: Text(appState.wantORneedchoice, //selected card text
+              
+                                  ),
+                                ),
+                                // ICON
+                                // Text(appState.wantORneedchoice),
+                                if (appState.wantORneedchoice == "Want") //Different WANT/NEED Symbols
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5),
+                                    child: wantneedIcon = Icon(
+                                      Icons.store_mall_directory,
+                                      color: Colors.blueAccent,
+                                      ),
+                                  )
+                                else
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5),
+                                    child: wantneedIcon = Icon(
+                                      Icons.house,
+                                      color: Colors.green
+                                      ),
+                                  )
+                              ],
+                            ),
+              
+                            onSelected: (String? choice) { // Called when the user selects an item
+                              appState.wantORneedchoice = choice!; // Set global variable to chosen card
+                              setState(() {
+                                appState.type = wantneedIcon;
+                                want_need_dropdownValue = appState.wantORneedchoice; // Update selected
+                              });
+                            },
+                          ),
+                          ),
+                          )
+                        ),
+
+
+                    Padding(                          //EXPENSE RANKINGS POP UP/DROP DOWN MENU
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        right: 0,
+                        top: 0,
+                        bottom: 20,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+              
+                        //    EXPENSE RANKINGS POP UP/DROP DOWN MENU 
+                        child: Container(
+                          width: 70,
+                          height: 40,
+                          decoration: BoxDecoration( // Adds border
+                            border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+                            borderRadius: BorderRadius.all(Radius.circular(50))
+                          ),
+                          child: PopupMenuButton( //Create pop up menu
+                            constraints: const BoxConstraints.tightFor(width: 80, height: 100), //Control width and height of dropdown button when clicked. Also creates a scrollable environment
+                            shape: RoundedRectangleBorder( //Change border for menu
+                            side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
+                            borderRadius: BorderRadius.all(Radius.circular(10.0))
+                            ), 
+                            // Configure pop up menu
+                            itemBuilder: (context) {
+                              return appState.rankTiers.map((str) { // Create drop down menu items from given list
+                                return PopupMenuItem(
+                                  value: str,
+                                  child: Row(
+                                    children: [
+                                      Text(str,
+                                        //little bit of style for the text
+                                        style: TextStyle(
+                                          fontFamily: 'Nato Sans',
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      if (str == "T1") //Different EXPENSE RANKINGS Symbols
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5, top: 3),
+                                          child: rankIcon = Icon(
+                                            Icons.looks_one,
+                                            color: Color.fromARGB(255, 180, 166, 35),
+                                          ),
+                                        )
+                                      else if (str == "T2")
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5, top: 3),
+                                          child: rankIcon = Icon(
+                                            Icons.looks_two,
+                                            color: Colors.orange
+                                            ),
+                                        )
+                                      else if (str == "T3")
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5, top: 3),
+                                          child: rankIcon = Icon(
+                                            Icons.looks_3,
+                                            color: Colors.red
+                                            ),
+                                        )
+
+                                    ],
+                                  ),
+                                  
+                                );
+                              }).toList();
+                            },
+              
+                            child: Row( // Displayed Choice and Icon
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                  ),
+                                  child: Text(appState.ranks, //selected card text
+              
+                                  ),
+                                ),
+                                // ICON
+                                if (appState.ranks == "T1") //Different EXPENSE RANKINGS Symbols
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5, top: 0),
+                                    child: rankIcon = Icon(
+                                      Icons.looks_one,
+                                      color: Color.fromARGB(255, 180, 166, 35),
+                                    ),
+                                  )
+                                else if (appState.ranks == "T2")
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5, top: 0),
+                                    child: rankIcon = Icon(
+                                      Icons.looks_two,
+                                      color: Colors.orange
+                                      ),
+                                  )
+                                else if (appState.ranks == "T3")
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5, top: 0),
+                                    child: rankIcon = Icon(
+                                      Icons.looks_3,
+                                      color: Colors.red
+                                      ),
+                                  )
+                              ],
+                            ),
+              
+                            onSelected: (String? choice) { // Called when the user selects an item
+                              appState.ranks = choice!; // Set global variable to chosen card
+                              setState(() {
+                                appState.rankIcon = rankIcon;
+                                rank_dropdownValue = appState.ranks; // Update selected
+                              });
+                            },
+                          ),
+                          ),
+                          )
+                        ),
+
+
+                    Padding(                          //EXPENSE FREQUENCY POP UP/DROP DOWN MENU
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        right: 0,
+                        top: 0,
+                        bottom: 20,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+              
+                        //    EXPENSE FREQUENCY POP UP/DROP DOWN MENU 
+                        child: Container(
+                          width: 120,
+                          height: 40,
+                          decoration: BoxDecoration( // Adds border
+                            border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+                            borderRadius: BorderRadius.all(Radius.circular(50))
+                          ),
+                          child: PopupMenuButton( //Create pop up menu
+                            constraints: const BoxConstraints.tightFor(width: 130, height: 100), //Control width and height of dropdown button when clicked. Also creates a scrollable environment
+                            shape: RoundedRectangleBorder( //Change border for menu
+                            side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
+                            borderRadius: BorderRadius.all(Radius.circular(10.0))
+                            ), 
+                            // Configure pop up menu
+                            itemBuilder: (context) {
+                              return appState.expenseFrequency.map((str) { // Create drop down menu items from given list
+                                return PopupMenuItem(
+                                  value: str,
+                                  child: Row(
+                                    children: [
+                                      Text(str,
+                                        //little bit of style for the text
+                                        style: TextStyle(
+                                          fontFamily: 'Nato Sans',
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      if (str == "One-Time") //Different EXPENSE FREQUENCY Symbols
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5, top: 3),
+                                          child: frequencyIcon = Icon(
+                                            Icons.one_x_mobiledata_outlined,
+                                            color: Colors.blueGrey,
+                                          ),
+                                        )
+                                      else
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5),
+                                          child: frequencyIcon = Icon(
+                                            Icons.calendar_month,
+                                            color: Colors.blueGrey
+                                            ),
+                                        )
+                                      
+                                    ],
+                                  ),
+                                  
+                                );
+                              }).toList();
+                            },
+              
+                            child: Row( // Displayed Choice and Icon
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                  ),
+                                  child: Text(appState.expenseFreq, //selected card text
+              
+                                  ),
+                                ),
+                                // ICON
+                                if (appState.expenseFreq == "One-Time") //Different EXPENSE FREQUENCY Symbols
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5),
+                                    child: frequencyIcon = Icon(
+                                      Icons.one_x_mobiledata_outlined,
+                                      color: Colors.blueGrey,
+                                      ),
+                                  )
+                                else
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5),
+                                    child: frequencyIcon = Icon(
+                                      Icons.calendar_month,
+                                      color: Colors.blueGrey
+                                      ),
+                                  )
+                              ],
+                            ),
+              
+                            onSelected: (String? choice) { // Called when the user selects an item
+                              appState.expenseFreq = choice!; // Set global variable to chosen card
+                              setState(() {
+                                appState.frequencyIcon = frequencyIcon;
+                                expense_freq_dropdownValue = appState.expenseFreq; // Update selected
+                              });
+                            },
+                          ),
+                          ),
+                          )
+                        ),
+
+
                     //  ADD EXPENSE BUTTON
                     Padding( 
                       padding: const EdgeInsets.only(
@@ -1570,6 +2048,13 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: IconButton(
                             onPressed: (){
                               setState(() {
+                                // UPDATE ICONS
+                                appState.type = wantneedIcon;
+                                appState.expenseTypeList.add(appState.type);
+                                appState.rankIcon = rankIcon;
+                                appState.rankList.add(appState.rankIcon);
+                                appState.frequencyIcon = frequencyIcon;
+                                appState.expenseFreqList.add(appState.frequencyIcon);
                                 //  ADD EXPENSE TO EXPENSE LIST
                                 appState.expenseList.add(("${appState.expenseName} ${appState.expenseCost.toStringAsFixed(2)}")); //Interpolation
                                 appState.expenseCostList.add((appState.expenseName, appState.expenseCost)); // Separate list for calcualtions
@@ -1577,7 +2062,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 appState.spent += appState.expenseCost; // add expense cost to spent
                               });
                             }, 
-                            icon: Icon(Icons.add),
+                            icon: Icon(Icons.add), // The plus icon
                             )
                         ),
                       ),
@@ -1611,7 +2096,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: SizedBox(
-                          width: 790,
+                          width: 920,
                           height: 45,
                           child: TextField(
                             style: TextStyle(
@@ -1639,7 +2124,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: Align( //align container
                           alignment: Alignment.centerLeft,
                           child: Container(
-                            width: 790,
+                            width: 920,
                             decoration: BoxDecoration(
                               border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
                               borderRadius: BorderRadius.all(Radius.circular(5))
@@ -1647,7 +2132,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             child: Align( //align everything inside box
                               alignment: Alignment.centerLeft,
                               child: SizedBox(
-                                width: 780,
+                                width: 920,
                                 child: Column(
                                   children: [
                                     if (appState.incomeList != []) //Displays Income channels if list isn't emtpy
@@ -1657,9 +2142,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                             //  Money Icon and Income Text Part
                                             Padding(
                                               padding: const EdgeInsets.only(
-                                                left: 5,
+                                                left: 5, 
                                               ),
-                                              child: Icon(Icons.attach_money_rounded, 
+                                              child: incomeFrequencyIcon = Icon(Icons.attach_money_rounded, 
                                               color: Colors.deepPurpleAccent,
                                               ),
                                             ),
@@ -1668,7 +2153,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                                 color: Colors.deepPurpleAccent,
                                               ),
                                             ),
-
+                                            
                                             //  Remove Button
                                             Expanded( // Aligns it nicely to the right
                                               child: Align(
@@ -1708,7 +2193,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: Align(
                             alignment: Alignment.centerLeft, //aligns container
                             child: Container(
-                              width: 790,
+                              width: 920,
                               decoration: BoxDecoration(
                                 border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
                                 borderRadius: BorderRadius.all(Radius.circular(5))
@@ -1904,6 +2389,113 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                     ),     
+
+
+                    Padding(                          //INCOME FREQUENCY POP UP/DROP DOWN MENU
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        right: 0,
+                        top: 0,
+                        bottom: 20,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+              
+                        //    INCOME FREQUENCY POP UP/DROP DOWN MENU 
+                        child: Container(
+                          width: 120,
+                          height: 40,
+                          decoration: BoxDecoration( // Adds border
+                            border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+                            borderRadius: BorderRadius.all(Radius.circular(50))
+                          ),
+                          child: PopupMenuButton( //Create pop up menu
+                            constraints: const BoxConstraints.tightFor(width: 130, height: 100), //Control width and height of dropdown button when clicked. Also creates a scrollable environment
+                            shape: RoundedRectangleBorder( //Change border for menu
+                            side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
+                            borderRadius: BorderRadius.all(Radius.circular(10.0))
+                            ), 
+                            // Configure pop up menu
+                            itemBuilder: (context) {
+                              return appState.incomeFrequency.map((str) { // Create drop down menu items from given list
+                                return PopupMenuItem(
+                                  value: str,
+                                  child: Row(
+                                    children: [
+                                      Text(str,
+                                        //little bit of style for the text
+                                        style: TextStyle(
+                                          fontFamily: 'Nato Sans',
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      if (str == "One-Time") //Different INCOME FREQUENCY Symbols
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5, top: 3),
+                                          child: Icon(
+                                            Icons.one_x_mobiledata_outlined,
+                                            color: Colors.blueGrey,
+                                          ),
+                                        )
+                                      else
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5),
+                                          child: Icon(
+                                            Icons.calendar_month,
+                                            color: Colors.blueGrey
+                                            ),
+                                        )
+                                      
+                                    ],
+                                  ),
+                                  
+                                );
+                              }).toList();
+                            },
+              
+                            child: Row( // Displayed Choice and Icon
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                  ),
+                                  child: Text(appState.incomeFreq, //selected card text
+              
+                                  ),
+                                ),
+                                // ICON
+                                if (appState.incomeFreq == "One-Time") //Different INCOME FREQUENCY Symbols
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5),
+                                    child: Icon(
+                                      Icons.one_x_mobiledata_outlined,
+                                      color: Colors.blueGrey,
+                                      ),
+                                  )
+                                else
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 5),
+                                    child: Icon(
+                                      Icons.calendar_month,
+                                      color: Colors.blueGrey
+                                      ),
+                                  )
+                              ],
+                            ),
+              
+                            onSelected: (String? choice) { // Called when the user selects an item
+                              appState.incomeFreq = choice!; // Set global variable to chosen card
+                              setState(() {
+                                income_freq_dropdownValue = appState.incomeFreq; // Update selected
+                              });
+                            },
+                          ),
+                          ),
+                          )
+                        ),
+
 
                     //  ADD INCOME BUTTON
                     Padding( 
@@ -2249,7 +2841,7 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
 
     return DefaultTabController(
       initialIndex: 0,
-      length: 3, //number of tabs
+      length: 1, //number of tabs
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Back'), // Back text
@@ -2302,14 +2894,14 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                 icon: const Icon(Icons.attach_money),
                 text: 'Finances',
               ),
-              Tab(
-                icon: const Icon(Icons.account_balance),
-                text: 'Taxes & Interests',
-              ),
-              Tab(
-                icon: const Icon(Icons.auto_awesome),
-                text: 'Goals',
-              ),
+              // Tab(
+              //   icon: const Icon(Icons.account_balance),
+              //   text: 'Taxes & Interests',
+              // ),
+              // Tab(
+              //   icon: const Icon(Icons.auto_awesome),
+              //   text: 'Goals',
+              // ),
             ],
           ),
         ),
@@ -2335,93 +2927,93 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
               
                     // FINANCES
               
-                    Padding(          // The text and padding between Card Type and Salary Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 40,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text("Select Credit Card*", 
-                        textAlign: TextAlign.left,)
-                        ),
-                    ),
+                    // Padding(          // The text and padding between Card Type and Salary Text Field
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 20,
+                    //     top: 40,
+                    //     bottom: 5,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
+                    //     child: Text("Select Credit Card*", 
+                    //     textAlign: TextAlign.left,)
+                    //     ),
+                    // ),
                     
                           
-                    Padding(                          //CARD TYPE POP UP/DROP DOWN MENU
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
+                    // Padding(                          //CARD TYPE POP UP/DROP DOWN MENU
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 400,
+                    //     top: 0,
+                    //     bottom: 0,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
               
-                        //    CREDIT CARD POP UP/DROP DOWN MENU 
-                        child: Container(
-                          width: 135,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
-                            borderRadius: BorderRadius.all(Radius.circular(5))
-                          ),
-                          child: PopupMenuButton( //Create pop up menu
-                            shape: RoundedRectangleBorder( //Change border for menu
-                            side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
-                            borderRadius: BorderRadius.all(Radius.circular(5.0))
-                            ), 
-                            // Configure pop up menu
-                            itemBuilder: (context) {
-                              return appState.creditCardList.map((str) { // Create drop down menu items from given list
-                                return PopupMenuItem(
-                                  value: str,
-                                  child: Text(str,
-                                    //little bit of style for the text
-                                    style: TextStyle(
-                                      fontFamily: 'Nato Sans',
-                                      fontSize: 15,
-                                    ),
-                                  ),
+                    //     //    CREDIT CARD POP UP/DROP DOWN MENU 
+                    //     child: Container(
+                    //       width: 135,
+                    //       height: 50,
+                    //       decoration: BoxDecoration(
+                    //         border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+                    //         borderRadius: BorderRadius.all(Radius.circular(5))
+                    //       ),
+                    //       child: PopupMenuButton( //Create pop up menu
+                    //         shape: RoundedRectangleBorder( //Change border for menu
+                    //         side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
+                    //         borderRadius: BorderRadius.all(Radius.circular(5.0))
+                    //         ), 
+                    //         // Configure pop up menu
+                    //         itemBuilder: (context) {
+                    //           return appState.creditCardList.map((str) { // Create drop down menu items from given list
+                    //             return PopupMenuItem(
+                    //               value: str,
+                    //               child: Text(str,
+                    //                 //little bit of style for the text
+                    //                 style: TextStyle(
+                    //                   fontFamily: 'Nato Sans',
+                    //                   fontSize: 15,
+                    //                 ),
+                    //               ),
                                   
-                                );
-                              }).toList();
-                            },
+                    //             );
+                    //           }).toList();
+                    //         },
               
-                            child: Row( // Displayed Choice and Icon
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: <Widget>[
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 10,
-                                  ),
-                                  child: Text(appState.creditcard, //selected card text
+                    //         child: Row( // Displayed Choice and Icon
+                    //           mainAxisSize: MainAxisSize.min,
+                    //           mainAxisAlignment: MainAxisAlignment.start,
+                    //           children: <Widget>[
+                    //             Padding(
+                    //               padding: const EdgeInsets.only(
+                    //                 left: 10,
+                    //               ),
+                    //               child: Text(appState.creditcard, //selected card text
               
-                                  ),
-                                ),
-                                Icon(Icons.credit_card),
-                              ],
-                            ),
+                    //               ),
+                    //             ),
+                    //             Icon(Icons.credit_card),
+                    //           ],
+                    //         ),
               
-                            onSelected: (String? choice) { // Called when the user selects an item
-                              appState.creditcard = choice!; // Set global variable to chosen card
-                              setState(() {
-                                dropdownValue = appState.creditcard; // Update selected
-                              });
-                            },
-                          ),
-                          ),
-                          )
-                        ),
+                    //         onSelected: (String? choice) { // Called when the user selects an item
+                    //           appState.creditcard = choice!; // Set global variable to chosen card
+                    //           setState(() {
+                    //             dropdownValue = appState.creditcard; // Update selected
+                    //           });
+                    //         },
+                    //       ),
+                    //       ),
+                    //       )
+                    //     ),
               
                     Padding(          // The text and padding between Text Field
                       padding: const EdgeInsets.only(
                         left: 50,
                         right: 20,
-                        top: 15,
+                        top: 40,
                         bottom: 5,
                       ),
                       child: Align(
@@ -2467,482 +3059,9 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                         ),
                       ),
                     ), 
-                          
-                    Padding(          // The text and padding between Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 15,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text("Enter your Annual Income*", 
-                        textAlign: TextAlign.left,
-                        )
-                        ),
-                    ),
-                          
-                          
-                    Padding(                          //INCOME TEXT FIELD
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: 460,
-                          height: 50,
-                          child: TextField(
-                            controller: annualincomeController, //Get user input
-                            onChanged: (value) { // If any text is entered
-                              annualincome = annualincomeController.text;
-                              if (annualincome != ""){
-                                appState.annualincome = double.parse(annualincome);
-                              }
-                            },
 
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
-                              labelText: 'Income',
-                              labelStyle: TextStyle( //Changes Font
-                                fontFamily: 'Nato Sans'
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-              
-                    Padding(          // The text and padding between Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 15,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text("Enter your Overall Monthly Living Expenses*", 
-                        textAlign: TextAlign.left,
-                        )
-                        ),
-                    ),
-              
-                    Padding(                          //LIVING EXPENSE TEXT FIELD
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: 460,
-                          height: 50,
-                          child: TextField(
-                            controller: livingexpenseController, //Get User Input
-                            onChanged: (value) { // If any text is entered
-                              livingexpense = livingexpenseController.text;
-                              if (livingexpense != ""){
-                                appState.livingexpense = double.parse(livingexpense);
-                              }
-                            },
 
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
-                              labelText: 'Monthly Expense',
-                              labelStyle: TextStyle( //Changes Font
-                                fontFamily: 'Nato Sans'
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-              
-                    Padding(          // The text and padding between Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 15,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Text("Enter your Overall Subscriptions Expenses", 
-                            textAlign: TextAlign.left,
-                            ),
-                            Text("  (Optional)",
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                            ), 
-                            textAlign: TextAlign.left,
-                            ),
-                          ],
-                        )
-                        ),
-                    ),
-              
-                    Padding(                          //SUBSCRIPTION EXPENSE TEXT FIELD
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: 460,
-                          height: 50,
-                          child: TextField(
-                            controller: subscriptionexpenseController, // Get User Input
-                            onChanged: (value) { // If any text is entered
-                              subscriptionexpense = subscriptionexpenseController.text;
-                              if (subscriptionexpense != ""){
-                                appState.subscriptionexpense = double.parse(subscriptionexpense);
-                              }
-                            },
-
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
-                              labelText: 'Subscription Expense',
-                              labelStyle: TextStyle( //Changes Font
-                                fontFamily: 'Nato Sans'
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-              ),
-
-            //  SECOND TAB
-            Scaffold(
-              body: Container(
-                decoration: BoxDecoration( //Adds image to container
-                  color: Colors.white10.withOpacity(1),
-                  image: DecorationImage(
-                    //alignment: Alignment.topCenter,
-                    fit: BoxFit.fill,
-                    image: AssetImage('assets/images/home_background2.jpg'), //Image
-                    opacity: 0.5,
-                  ),
-                ),
-                child: Column(
-                  children: [
-              
-                    // TAXES & INTERESTS
-              
-                    Padding(          // The text and padding between Card Type and Salary Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 40,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text("Filing Status*", 
-                        textAlign: TextAlign.left,)
-                        ),
-                    ),
-                    
-                          
-                    Padding(                          //FILING STATUS POP UP/DROP DOWN MENU
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-              
-                        //    FILING STATUS POP UP/DROP DOWN MENU 
-                        child: Container(
-                          width: 110,
-                          height: 50,
-                          decoration: BoxDecoration( // Adds border
-                            border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
-                            borderRadius: BorderRadius.all(Radius.circular(5))
-                          ),
-                          child: PopupMenuButton( //Create pop up menu
-                            shape: RoundedRectangleBorder( //Change border for menu
-                            side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
-                            borderRadius: BorderRadius.all(Radius.circular(5.0))
-                            ), 
-                            // Configure pop up menu
-                            itemBuilder: (context) {
-                              return appState.marriedOrSingleList.map((str) { // Create drop down menu items from given list
-                                return PopupMenuItem(
-                                  value: str,
-                                  child: Text(str,
-                                    //little bit of style for the text
-                                    style: TextStyle(
-                                      fontFamily: 'Nato Sans',
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  
-                                );
-                              }).toList();
-                            },
-              
-                            child: Row( // Displayed Choice and Icon
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: <Widget>[
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 10,
-                                  ),
-                                  child: Text(appState.singlemarried, //selected card text
-              
-                                  ),
-                                ),
-                                // ICON
-                                Padding( // spaces between icon and chosen filing status
-                                  padding: const EdgeInsets.only(
-                                    left: 5,
-                                  ),
-                                  child: Icon(Icons.group),
-                                ),
-                              ],
-                            ),
-              
-                            onSelected: (String? choice) { // Called when the user selects an item
-                              appState.singlemarried = choice!; // Set global variable to chosen card
-                              setState(() {
-                                dropdownValue = appState.singlemarried; // Update selected
-                              });
-                            },
-                          ),
-                          ),
-                          )
-                        ),
-              
-                          
-                          
-                    Padding(          // The text and padding between Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 15,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Text("Mortgage Interest", 
-                            textAlign: TextAlign.left,
-                            ),
-                            Text("  (Optional)",
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                            ), 
-                            textAlign: TextAlign.left,
-                            ),
-                          ],
-                        )
-                        ),
-                    ),
-                          
-                          
-                    Padding(                          //MORTGAGE TEXT FIELD
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: 460,
-                          height: 50,
-                          child: TextField(
-                            controller: mortgageController, // Get User Input
-                            onChanged: (value) { // If any text is entered
-                              mortgage = mortgageController.text;
-                              if (mortgage != ""){
-                                appState.mortgage = double.parse(mortgage);
-                              }
-                            },
-
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
-                              labelText: 'Mortgage',
-                              labelStyle: TextStyle( //Changes Font
-                                fontFamily: 'Nato Sans'
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-              
-                    Padding(          // The text and padding between Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 15,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text("Annual Interest Rate (% per year)*", 
-                        textAlign: TextAlign.left,
-                        )
-                        ),
-                    ),
-              
-                    Padding(                          //ANNUAL INTEREST RATE TEXT FIELD
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: 460,
-                          height: 50,
-                          child: TextField(
-                            controller: annualinterestController, // Get User Input
-                            onChanged: (value) { // If any text is entered
-                              annualinterest = annualinterestController.text;
-                              if (annualinterest != ""){
-                                appState.annualinterest = double.parse(annualinterest);
-                              }
-                            },
-
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
-                              labelText: 'Interest Rate',
-                              labelStyle: TextStyle( //Changes Font
-                                fontFamily: 'Nato Sans'
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-              
-                    Padding(          // The text and padding between Text Field
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        right: 20,
-                        top: 15,
-                        bottom: 5,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text("First Deposit Date (YYYY-MM-DD)*", 
-                        textAlign: TextAlign.left,
-                        )
-                        ),
-                    ),
-
-                    //                     FIRST DEPOSIT DATE CALENDAR
-                    Padding(                          
-                      padding: const EdgeInsets.only( //spacing for select date button
-                        left: 40,
-                        right: 400,
-                        top: 0,
-                        bottom: 0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: 460,
-                          height: 100,
-                          child: Column(
-                            children: [ 
-                              // Sets the Text to be the date chosen
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding( //spacing for box with displayed date
-                                  padding: const EdgeInsets.only(
-                                    left: 10,
-                                    right: 50,
-                                    top: 0,
-                                    bottom: 0,
-                                  ),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
-                                      borderRadius: BorderRadius.all(Radius.circular(5))
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        FinancialAccountCreationPage.selectedDate.toString().split(' ')[0]),
-                                    ),
-                                  ),
-                                )),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 10,
-                                  ),
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      _selectDate(context); // Calls function named _selectDate
-                                    },
-                                    child: const Text('Select date',
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  ],
-                ),
-              )
-              ),
-
-            //  THIRD TAB
-            Scaffold(
-              body: Container(
-                decoration: BoxDecoration( //Adds image to container
-                  color: Colors.white10.withOpacity(1),
-                  image: DecorationImage(
-                    //alignment: Alignment.topCenter,
-                    fit: BoxFit.fill,
-                    image: AssetImage('assets/images/home_background2.jpg'), //Image
-                    opacity: 0.5,
-                  ),
-                ),
-                child: Column(
-                  children: [
-              
-                    // GOALS
+                    // GOALS IN FINANCES TAB
 
                   Align(
                     alignment: Alignment.centerLeft,
@@ -2950,7 +3069,7 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                       padding: const EdgeInsets.only(
                         left: 50,
                         right: 20,
-                        top: 40,
+                        top: 15,
                         bottom: 15,
                       ),
                       child: Row(
@@ -3565,12 +3684,1109 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                         ),
                       ),
                     ),
+                    // Padding(          // The text and padding between Text Field
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 20,
+                    //     top: 15,
+                    //     bottom: 5,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
+                    //     child: Text("Enter your Annual Income*", 
+                    //     textAlign: TextAlign.left,
+                    //     )
+                    //     ),
+                    // ),
+                          
+                          
+                    // Padding(                          //INCOME TEXT FIELD
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 400,
+                    //     top: 0,
+                    //     bottom: 0,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
+                    //     child: SizedBox(
+                    //       width: 460,
+                    //       height: 50,
+                    //       child: TextField(
+                    //         controller: annualincomeController, //Get user input
+                    //         onChanged: (value) { // If any text is entered
+                    //           annualincome = annualincomeController.text;
+                    //           if (annualincome != ""){
+                    //             appState.annualincome = double.parse(annualincome);
+                    //           }
+                    //         },
 
+                    //         decoration: InputDecoration(
+                    //           border: OutlineInputBorder(),
+                    //           floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+                    //           labelText: 'Income',
+                    //           labelStyle: TextStyle( //Changes Font
+                    //             fontFamily: 'Nato Sans'
+                    //           ),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+              
+                    // Padding(          // The text and padding between Text Field
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 20,
+                    //     top: 15,
+                    //     bottom: 5,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
+                    //     child: Text("Enter your Overall Monthly Living Expenses*", 
+                    //     textAlign: TextAlign.left,
+                    //     )
+                    //     ),
+                    // ),
+              
+                    // Padding(                          //LIVING EXPENSE TEXT FIELD
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 400,
+                    //     top: 0,
+                    //     bottom: 0,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
+                    //     child: SizedBox(
+                    //       width: 460,
+                    //       height: 50,
+                    //       child: TextField(
+                    //         controller: livingexpenseController, //Get User Input
+                    //         onChanged: (value) { // If any text is entered
+                    //           livingexpense = livingexpenseController.text;
+                    //           if (livingexpense != ""){
+                    //             appState.livingexpense = double.parse(livingexpense);
+                    //           }
+                    //         },
 
+                    //         decoration: InputDecoration(
+                    //           border: OutlineInputBorder(),
+                    //           floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+                    //           labelText: 'Monthly Expense',
+                    //           labelStyle: TextStyle( //Changes Font
+                    //             fontFamily: 'Nato Sans'
+                    //           ),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+              
+                    // Padding(          // The text and padding between Text Field
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 20,
+                    //     top: 15,
+                    //     bottom: 5,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
+                    //     child: Row(
+                    //       children: [
+                    //         Text("Enter your Overall Subscriptions Expenses", 
+                    //         textAlign: TextAlign.left,
+                    //         ),
+                    //         Text("  (Optional)",
+                    //         style: TextStyle(
+                    //           fontStyle: FontStyle.italic,
+                    //         ), 
+                    //         textAlign: TextAlign.left,
+                    //         ),
+                    //       ],
+                    //     )
+                    //     ),
+                    // ),
+              
+                    // Padding(                          //SUBSCRIPTION EXPENSE TEXT FIELD
+                    //   padding: const EdgeInsets.only(
+                    //     left: 50,
+                    //     right: 400,
+                    //     top: 0,
+                    //     bottom: 0,
+                    //   ),
+                    //   child: Align(
+                    //     alignment: Alignment.centerLeft,
+                    //     child: SizedBox(
+                    //       width: 460,
+                    //       height: 50,
+                    //       child: TextField(
+                    //         controller: subscriptionexpenseController, // Get User Input
+                    //         onChanged: (value) { // If any text is entered
+                    //           subscriptionexpense = subscriptionexpenseController.text;
+                    //           if (subscriptionexpense != ""){
+                    //             appState.subscriptionexpense = double.parse(subscriptionexpense);
+                    //           }
+                    //         },
+
+                    //         decoration: InputDecoration(
+                    //           border: OutlineInputBorder(),
+                    //           floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+                    //           labelText: 'Subscription Expense',
+                    //           labelStyle: TextStyle( //Changes Font
+                    //             fontFamily: 'Nato Sans'
+                    //           ),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
                   ],
                 ),
               )
               ),
+
+            //  SECOND TAB
+            // Scaffold(
+            //   body: Container(
+            //     decoration: BoxDecoration( //Adds image to container
+            //       color: Colors.white10.withOpacity(1),
+            //       image: DecorationImage(
+            //         //alignment: Alignment.topCenter,
+            //         fit: BoxFit.fill,
+            //         image: AssetImage('assets/images/home_background2.jpg'), //Image
+            //         opacity: 0.5,
+            //       ),
+            //     ),
+            //     child: Column(
+            //       children: [
+              
+            //         // TAXES & INTERESTS
+              
+            //         Padding(          // The text and padding between Card Type and Salary Text Field
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 40,
+            //             bottom: 5,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: Text("Filing Status*", 
+            //             textAlign: TextAlign.left,)
+            //             ),
+            //         ),
+                    
+                          
+            //         Padding(                          //FILING STATUS POP UP/DROP DOWN MENU
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 400,
+            //             top: 0,
+            //             bottom: 0,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+              
+            //             //    FILING STATUS POP UP/DROP DOWN MENU 
+            //             child: Container(
+            //               width: 110,
+            //               height: 50,
+            //               decoration: BoxDecoration( // Adds border
+            //                 border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+            //                 borderRadius: BorderRadius.all(Radius.circular(5))
+            //               ),
+            //               child: PopupMenuButton( //Create pop up menu
+            //                 shape: RoundedRectangleBorder( //Change border for menu
+            //                 side: BorderSide(style: BorderStyle.solid, width: 0.3), //adds a line around the border
+            //                 borderRadius: BorderRadius.all(Radius.circular(5.0))
+            //                 ), 
+            //                 // Configure pop up menu
+            //                 itemBuilder: (context) {
+            //                   return appState.marriedOrSingleList.map((str) { // Create drop down menu items from given list
+            //                     return PopupMenuItem(
+            //                       value: str,
+            //                       child: Text(str,
+            //                         //little bit of style for the text
+            //                         style: TextStyle(
+            //                           fontFamily: 'Nato Sans',
+            //                           fontSize: 15,
+            //                         ),
+            //                       ),
+                                  
+            //                     );
+            //                   }).toList();
+            //                 },
+              
+            //                 child: Row( // Displayed Choice and Icon
+            //                   mainAxisSize: MainAxisSize.min,
+            //                   mainAxisAlignment: MainAxisAlignment.start,
+            //                   children: <Widget>[
+            //                     Padding(
+            //                       padding: const EdgeInsets.only(
+            //                         left: 10,
+            //                       ),
+            //                       child: Text(appState.singlemarried, //selected card text
+              
+            //                       ),
+            //                     ),
+            //                     // ICON
+            //                     Padding( // spaces between icon and chosen filing status
+            //                       padding: const EdgeInsets.only(
+            //                         left: 5,
+            //                       ),
+            //                       child: Icon(Icons.group),
+            //                     ),
+            //                   ],
+            //                 ),
+              
+            //                 onSelected: (String? choice) { // Called when the user selects an item
+            //                   appState.singlemarried = choice!; // Set global variable to chosen card
+            //                   setState(() {
+            //                     dropdownValue = appState.singlemarried; // Update selected
+            //                   });
+            //                 },
+            //               ),
+            //               ),
+            //               )
+            //             ),
+              
+                          
+                          
+            //         Padding(          // The text and padding between Text Field
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 15,
+            //             bottom: 5,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: Row(
+            //               children: [
+            //                 Text("Mortgage Interest", 
+            //                 textAlign: TextAlign.left,
+            //                 ),
+            //                 Text("  (Optional)",
+            //                 style: TextStyle(
+            //                   fontStyle: FontStyle.italic,
+            //                 ), 
+            //                 textAlign: TextAlign.left,
+            //                 ),
+            //               ],
+            //             )
+            //             ),
+            //         ),
+                          
+                          
+            //         Padding(                          //MORTGAGE TEXT FIELD
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 400,
+            //             top: 0,
+            //             bottom: 0,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: SizedBox(
+            //               width: 460,
+            //               height: 50,
+            //               child: TextField(
+            //                 controller: mortgageController, // Get User Input
+            //                 onChanged: (value) { // If any text is entered
+            //                   mortgage = mortgageController.text;
+            //                   if (mortgage != ""){
+            //                     appState.mortgage = double.parse(mortgage);
+            //                   }
+            //                 },
+
+            //                 decoration: InputDecoration(
+            //                   border: OutlineInputBorder(),
+            //                   floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+            //                   labelText: 'Mortgage',
+            //                   labelStyle: TextStyle( //Changes Font
+            //                     fontFamily: 'Nato Sans'
+            //                   ),
+            //                 ),
+            //               ),
+            //             ),
+            //           ),
+            //         ),
+              
+            //         Padding(          // The text and padding between Text Field
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 15,
+            //             bottom: 5,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: Text("Annual Interest Rate (% per year)*", 
+            //             textAlign: TextAlign.left,
+            //             )
+            //             ),
+            //         ),
+              
+            //         Padding(                          //ANNUAL INTEREST RATE TEXT FIELD
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 400,
+            //             top: 0,
+            //             bottom: 0,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: SizedBox(
+            //               width: 460,
+            //               height: 50,
+            //               child: TextField(
+            //                 controller: annualinterestController, // Get User Input
+            //                 onChanged: (value) { // If any text is entered
+            //                   annualinterest = annualinterestController.text;
+            //                   if (annualinterest != ""){
+            //                     appState.annualinterest = double.parse(annualinterest);
+            //                   }
+            //                 },
+
+            //                 decoration: InputDecoration(
+            //                   border: OutlineInputBorder(),
+            //                   floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+            //                   labelText: 'Interest Rate',
+            //                   labelStyle: TextStyle( //Changes Font
+            //                     fontFamily: 'Nato Sans'
+            //                   ),
+            //                 ),
+            //               ),
+            //             ),
+            //           ),
+            //         ),
+              
+            //         Padding(          // The text and padding between Text Field
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 15,
+            //             bottom: 5,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: Text("First Deposit Date (YYYY-MM-DD)*", 
+            //             textAlign: TextAlign.left,
+            //             )
+            //             ),
+            //         ),
+
+            //         //                     FIRST DEPOSIT DATE CALENDAR
+            //         Padding(                          
+            //           padding: const EdgeInsets.only( //spacing for select date button
+            //             left: 40,
+            //             right: 400,
+            //             top: 0,
+            //             bottom: 0,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: SizedBox(
+            //               width: 460,
+            //               height: 100,
+            //               child: Column(
+            //                 children: [ 
+            //                   // Sets the Text to be the date chosen
+            //                   Align(
+            //                     alignment: Alignment.centerLeft,
+            //                     child: Padding( //spacing for box with displayed date
+            //                       padding: const EdgeInsets.only(
+            //                         left: 10,
+            //                         right: 50,
+            //                         top: 0,
+            //                         bottom: 0,
+            //                       ),
+            //                       child: Container(
+            //                         decoration: BoxDecoration(
+            //                           border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+            //                           borderRadius: BorderRadius.all(Radius.circular(5))
+            //                         ),
+            //                         child: Padding(
+            //                           padding: const EdgeInsets.all(8.0),
+            //                           child: Text(
+            //                             FinancialAccountCreationPage.selectedDate.toString().split(' ')[0]),
+            //                         ),
+            //                       ),
+            //                     )),
+            //                   Align(
+            //                     alignment: Alignment.centerLeft,
+            //                     child: Padding(
+            //                       padding: const EdgeInsets.only(
+            //                         top: 10,
+            //                       ),
+            //                       child: ElevatedButton(
+            //                         onPressed: () {
+            //                           _selectDate(context); // Calls function named _selectDate
+            //                         },
+            //                         child: const Text('Select date',
+            //                           style: TextStyle(
+            //                             color: Colors.black,
+            //                           ),
+            //                         ),
+            //                       ),
+            //                     ),
+            //                   ),
+            //                 ],
+            //               ),
+            //             ),
+            //           ),
+            //         ),
+
+            //       ],
+            //     ),
+            //   )
+            //   ),
+
+            // //  THIRD TAB
+            // Scaffold(
+            //   body: Container(
+            //     decoration: BoxDecoration( //Adds image to container
+            //       color: Colors.white10.withOpacity(1),
+            //       image: DecorationImage(
+            //         //alignment: Alignment.topCenter,
+            //         fit: BoxFit.fill,
+            //         image: AssetImage('assets/images/home_background2.jpg'), //Image
+            //         opacity: 0.5,
+            //       ),
+            //     ),
+            //     child: Column(
+            //       children: [
+              
+            //         // GOALS
+
+            //       Align(
+            //         alignment: Alignment.centerLeft,
+            //         child: Padding(
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 40,
+            //             bottom: 15,
+            //           ),
+            //           child: Row(
+            //             children: [
+            //               Text("Select your Reasons for Saving", 
+            //                 style: TextStyle(
+            //                   fontFamily: 'Open Sans',
+            //                   fontWeight: FontWeight.bold,
+            //                 ),
+            //                 textAlign: TextAlign.left,),
+            //               Padding(
+            //                 padding: const EdgeInsets.only(
+            //                   left: 10,
+            //                 ),
+            //                 child: Text("(can be changed later)", 
+            //                   style: TextStyle(
+            //                     fontSize: 12,
+            //                     fontStyle: FontStyle.italic,
+            //                   ),
+            //                   textAlign: TextAlign.left,),
+            //               ),
+            //             ],
+            //           ),
+            //         )
+            //         ),
+
+            //         //  HOME SAVING CHECKBOX 
+            //         Padding(
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 0,
+            //             bottom: 5,
+            //           ),
+            //           child: Row(
+            //             children: [
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     right: 10,
+            //                   ),
+            //                   child: Text("House", 
+            //                   textAlign: TextAlign.left,),
+            //                 )
+            //                 ),
+
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     left: 76,
+            //                   ),
+            //                   child: Row(
+            //                     children: [
+            //                       Checkbox(
+            //                         value: appState.check1,
+            //                         onChanged:(bool? value) {
+            //                           setState(() {
+            //                             check1 = value;
+            //                             appState.check1 = check1;
+            //                           });
+            //                         },
+            //                         ),
+
+            //                     //  RETIREMENT SAVINGS CHECKBOX
+            //                     Padding(
+            //                       padding: const EdgeInsets.only(
+            //                         left: 50,
+            //                         right: 20,
+            //                         top: 0,
+            //                         bottom: 5,
+            //                       ),
+            //                       child: Row(
+            //                         children: [
+            //                           Align(
+            //                             alignment: Alignment.centerLeft,
+            //                             child: Padding(
+            //                               padding: const EdgeInsets.only(
+            //                                 right: 10,
+            //                               ),
+            //                               child: Text("Retirement", 
+            //                               textAlign: TextAlign.left,),
+            //                             )
+            //                             ),
+
+            //                           Align(
+            //                             alignment: Alignment.centerLeft,
+            //                             child: Padding(
+            //                               padding: const EdgeInsets.only(
+            //                                 left: 42,
+            //                               ),
+            //                               child: Checkbox(
+            //                                 value: appState.check2,
+            //                                 onChanged:(bool? value) {
+            //                                   setState(() {
+            //                                     check2 = value;
+            //                                     appState.check2 = check2;
+            //                                   });
+            //                                 },
+            //                                 ),
+            //                             ),
+            //                           ),   
+            //                         ],
+            //                       ),
+            //                     ),
+
+            //                     ],
+            //                   ),
+            //                 ),
+            //               ),   
+            //             ],
+            //           ),
+            //         ),
+
+            //         //  TRAVEL SAVINGS CHECKBOX
+            //         Padding(
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 0,
+            //             bottom: 5,
+            //           ),
+            //           child: Row(
+            //             children: [
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     right: 10,
+            //                   ),
+            //                   child: Text("Travel", 
+            //                   textAlign: TextAlign.left,),
+            //                 )
+            //                 ),
+
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     left: 77,
+            //                   ),
+            //                   child: Row(
+            //                     children: [
+            //                       Checkbox(
+            //                         value: appState.check3,
+            //                         onChanged:(bool? value) {
+            //                           setState(() {
+            //                             check3 = value;
+            //                             appState.check3 = check3;
+            //                           });
+            //                         },
+            //                         ),
+
+            //                       //  ELECTRONICS SAVINGS CHECKBOX
+            //                       Padding(
+            //                         padding: const EdgeInsets.only(
+            //                           left: 50,
+            //                           right: 20,
+            //                           top: 0,
+            //                           bottom: 5,
+            //                         ),
+            //                         child: Row(
+            //                           children: [
+            //                             Align(
+            //                               alignment: Alignment.centerLeft,
+            //                               child: Padding(
+            //                                 padding: const EdgeInsets.only(
+            //                                   right: 10,
+            //                                 ),
+            //                                 child: Text("Electronics", 
+            //                                 textAlign: TextAlign.left,),
+            //                               )
+            //                               ),
+
+            //                             Align(
+            //                               alignment: Alignment.centerLeft,
+            //                               child: Padding(
+            //                                 padding: const EdgeInsets.only(
+            //                                   left: 44,
+            //                                 ),
+            //                                 child: Checkbox(
+            //                                   value: appState.check4,
+            //                                   onChanged:(bool? value) {
+            //                                     setState(() {
+            //                                       check4 = value;
+            //                                       appState.check4 = check4;
+            //                                     });
+            //                                   },
+            //                                   ),
+            //                               ),
+            //                             ),   
+            //                           ],
+            //                         ),
+            //                       ),
+            //                     ],
+            //                   ),
+            //                 ),
+            //               ),   
+            //             ],
+            //           ),
+            //         ),
+
+            //         //  FAMILY SAVINGS CHECKBOX
+            //         Padding(
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 0,
+            //             bottom: 5,
+            //           ),
+            //           child: Row(
+            //             children: [
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     right: 10,
+            //                   ),
+            //                   child: Text("Family", 
+            //                   textAlign: TextAlign.left,),
+            //                 )
+            //                 ),
+
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     left: 75,
+            //                   ),
+            //                   child: Row(
+            //                     children: [
+            //                       Checkbox(
+            //                         value: appState.check5,
+            //                         onChanged:(bool? value) {
+            //                           setState(() {
+            //                             check5 = value;
+            //                             appState.check5 = check5;
+            //                           });
+            //                         },
+            //                         ),
+
+            //                       //  EDUCATION SAVINGS CHECKBOX
+            //                       Padding(
+            //                         padding: const EdgeInsets.only(
+            //                           left: 50,
+            //                           right: 20,
+            //                           top: 0,
+            //                           bottom: 5,
+            //                         ),
+            //                         child: Row(
+            //                           children: [
+            //                             Align(
+            //                               alignment: Alignment.centerLeft,
+            //                               child: Padding(
+            //                                 padding: const EdgeInsets.only(
+            //                                   right: 10,
+            //                                 ),
+            //                                 child: Text("Education", 
+            //                                 textAlign: TextAlign.left,),
+            //                               )
+            //                               ),
+
+            //                             Align(
+            //                               alignment: Alignment.centerLeft,
+            //                               child: Padding(
+            //                                 padding: const EdgeInsets.only(
+            //                                   left: 51,
+            //                                 ),
+            //                                 child: Checkbox(
+            //                                   value: appState.check6,
+            //                                   onChanged:(bool? value) {
+            //                                     setState(() {
+            //                                       check6 = value;
+            //                                       appState.check6 = check6;
+            //                                     });
+            //                                   },
+            //                                   ),
+            //                               ),
+            //                             ),   
+            //                           ],
+            //                         ),
+            //                       ),
+
+            //                     ],
+            //                   ),
+            //                 ),
+            //               ),   
+            //             ],
+            //           ),
+            //         ),
+
+            //         //  EMERGENCY FUNDS SAVINGS CHECKBOX
+            //         Padding(
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 0,
+            //             bottom: 5,
+            //           ),
+            //           child: Row(
+            //             children: [
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     right: 8,
+            //                   ),
+            //                   child: Text("Emergency Funds", 
+            //                   textAlign: TextAlign.left,),
+            //                 )
+            //                 ),
+
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Row(
+            //                   children: [
+            //                     Checkbox(
+            //                       value: appState.check7,
+            //                       onChanged:(bool? value) {
+            //                         setState(() {
+            //                           check7 = value;
+            //                           appState.check7 = check7;
+            //                         });
+            //                       },
+            //                       ),
+
+            //                     //  HOMEWARE SAVINGS CHECKBOX
+            //                     Padding(
+            //                       padding: const EdgeInsets.only(
+            //                         left: 50,
+            //                         right: 20,
+            //                         top: 0,
+            //                         bottom: 5,
+            //                       ),
+            //                       child: Row(
+            //                         children: [
+            //                           Align(
+            //                             alignment: Alignment.centerLeft,
+            //                             child: Padding(
+            //                               padding: const EdgeInsets.only(
+            //                                 right: 10,
+            //                               ),
+            //                               child: Text("Homeware", 
+            //                               textAlign: TextAlign.left,),
+            //                             )
+            //                             ),
+
+            //                           Align(
+            //                             alignment: Alignment.centerLeft,
+            //                             child: Padding(
+            //                               padding: const EdgeInsets.only(
+            //                                 left: 44,
+            //                               ),
+            //                               child: Checkbox(
+            //                                 value: appState.check8,
+            //                                 onChanged:(bool? value) {
+            //                                   setState(() {
+            //                                     check8 = value;
+            //                                     appState.check8 = check8;
+            //                                   });
+            //                                 },
+            //                                 ),
+            //                             ),
+            //                           ),   
+            //                         ],
+            //                       ),
+            //                     ),
+
+            //                   ],
+            //                 ),
+            //               ),   
+            //             ],
+            //           ),
+            //         ),
+
+            //         //  SHOPPING SAVINGS CHECKBOX
+            //         Padding(
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 0,
+            //             bottom: 5,
+            //           ),
+            //           child: Row(
+            //             children: [
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     right: 10,
+            //                   ),
+            //                   child: Text("Shopping", 
+            //                   textAlign: TextAlign.left,),
+            //                 )
+            //                 ),
+
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     left: 55,
+            //                   ),
+            //                   child: Row(
+            //                     children: [
+            //                       Checkbox(
+            //                         value: appState.check9,
+            //                         onChanged:(bool? value) {
+            //                           setState(() {
+            //                             check9 = value;
+            //                             appState.check9 = check9;
+            //                           });
+            //                         },
+            //                         ),
+
+            //                     //  MORTGAGE DOWN PAYMENT SAVINGS CHECKBOX
+            //                     Padding(
+            //                       padding: const EdgeInsets.only(
+            //                         left: 50,
+            //                         right: 20,
+            //                         top: 0,
+            //                         bottom: 5,
+            //                       ),
+            //                       child: Row(
+            //                         children: [
+            //                           Align(
+            //                             alignment: Alignment.centerLeft,
+            //                             child: Padding(
+            //                               padding: const EdgeInsets.only(
+            //                                 right: 10,
+            //                               ),
+            //                               child: Text("Mortgage", 
+            //                               textAlign: TextAlign.left,),
+            //                             )
+            //                             ),
+
+            //                           Align(
+            //                             alignment: Alignment.centerLeft,
+            //                             child: Padding(
+            //                               padding: const EdgeInsets.only(
+            //                                 left: 54,
+            //                               ),
+            //                               child: Checkbox(
+            //                                 value: appState.check10,
+            //                                 onChanged:(bool? value) {
+            //                                   setState(() {
+            //                                     check10 = value;
+            //                                     appState.check10 = check10;
+            //                                   });
+            //                                 },
+            //                                 ),
+            //                             ),
+            //                           ),   
+            //                         ],
+            //                       ),
+            //                     ),
+
+            //                     ],
+            //                   ),
+            //                 ),
+            //               ),   
+            //             ],
+            //           ),
+            //         ),
+
+            //         //  CAR SAVINGS CHECKBOX
+            //         Padding(
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 0,
+            //             bottom: 5,
+            //           ),
+            //           child: Row(
+            //             children: [
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     right: 10,
+            //                   ),
+            //                   child: Text("Car", 
+            //                   textAlign: TextAlign.left,),
+            //                 )
+            //                 ),
+
+            //               Align(
+            //                 alignment: Alignment.centerLeft,
+            //                 child: Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     left: 97,
+            //                   ),
+            //                   child: Row(
+            //                     children: [
+            //                       Checkbox(
+            //                         value: appState.check11,
+            //                         onChanged:(bool? value) {
+            //                           setState(() {
+            //                             check11 = value;
+            //                             appState.check11 = check11;
+            //                           });
+            //                         },
+            //                         ),
+
+            //                       //  OTHER SAVINGS CHECKBOX
+            //                       Padding(
+            //                         padding: const EdgeInsets.only(
+            //                           left: 50,
+            //                           right: 20,
+            //                           top: 0,
+            //                           bottom: 5,
+            //                         ),
+            //                         child: Row(
+            //                           children: [
+            //                             Align(
+            //                               alignment: Alignment.centerLeft,
+            //                               child: Padding(
+            //                                 padding: const EdgeInsets.only(
+            //                                   right: 10,
+            //                                 ),
+            //                                 child: Text("Other", 
+            //                                 textAlign: TextAlign.left,),
+            //                               )
+            //                               ),
+
+            //                             Align(
+            //                               alignment: Alignment.centerLeft,
+            //                               child: Padding(
+            //                                 padding: const EdgeInsets.only(
+            //                                   left: 80,
+            //                                 ),
+            //                                 child: Checkbox(
+            //                                   value: appState.check12,
+            //                                   onChanged:(bool? value) {
+            //                                     setState(() {
+            //                                       check12 = value;
+            //                                       appState.check12 = check12;
+            //                                     });
+            //                                   },
+            //                                   ),
+            //                               ),
+            //                             ),   
+            //                           ],
+            //                         ),
+            //                       ),
+
+            //                     ],
+            //                   ),
+            //                 ),
+            //               ),   
+            //             ],
+            //           ),
+            //         ),
+
+            //         Padding(          // The text and padding between Text Field
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 20,
+            //             top: 15,
+            //             bottom: 5,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: Row(
+            //               children: [
+            //                 Text("Savings Goal", 
+            //                 textAlign: TextAlign.left,
+            //                 ),
+            //                 Text("   (can be changed later)",
+            //                 style: TextStyle(
+            //                   fontSize: 12,
+            //                   fontStyle: FontStyle.italic,
+            //                 ), 
+            //                 textAlign: TextAlign.left,
+            //                 ),
+            //               ],
+            //             )
+            //             ),
+            //         ),
+                          
+                          
+            //         Padding(                          //GOAL TEXT FIELD
+            //           padding: const EdgeInsets.only(
+            //             left: 50,
+            //             right: 400,
+            //             top: 0,
+            //             bottom: 0,
+            //           ),
+            //           child: Align(
+            //             alignment: Alignment.centerLeft,
+            //             child: SizedBox(
+            //               width: 235,
+            //               height: 50,
+            //               child: TextField(
+            //                 controller: savingsgoalController,
+            //                 onChanged: (value) { // If any text is entered
+            //                   savingsgoal = savingsgoalController.text;
+            //                   if (savingsgoal != ""){
+            //                     appState.savingsgoal = double.parse(savingsgoal);
+            //                   }
+            //                 },
+
+            //                 decoration: InputDecoration(
+            //                   border: OutlineInputBorder(),
+            //                   floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+            //                   labelText: 'Default: 2x Balance',
+            //                   labelStyle: TextStyle( //Changes Font
+            //                     fontFamily: 'Nato Sans'
+            //                   ),
+            //                 ),
+            //               ),
+            //             ),
+            //           ),
+            //         ),
+
+
+            //       ],
+            //     ),
+            //   )
+            //   ),
           ],
         ),
       ),
@@ -3807,7 +5023,7 @@ class _BudgetPageState extends State<BudgetPage> {
                           child: Align( //align everything inside box
                             alignment: Alignment.centerLeft,
                             child: SizedBox(
-                              width: 780,
+                              width: 920,
                               child: Column(
                                 children: [
       
@@ -3868,7 +5084,7 @@ class _BudgetPageState extends State<BudgetPage> {
                             child: Align(
                               alignment: Alignment.centerLeft, //aligns container
                               child: Container(
-                                width: 790,
+                                width: 920,
                                 decoration: BoxDecoration(
                                   border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
                                   borderRadius: BorderRadius.all(Radius.circular(5))
@@ -3932,7 +5148,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     child: Align( //align everything inside box
                       alignment: Alignment.centerLeft,
                       child: SizedBox(
-                        width: 780,
+                        width: 920,
                         child: Column(
                           children: [
       
