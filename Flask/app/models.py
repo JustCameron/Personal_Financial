@@ -1,4 +1,5 @@
 from . import db
+#from sqlalchemy import ForeignKey
 from werkzeug.security import generate_password_hash
 
 class Account(db.Model):
@@ -41,14 +42,16 @@ class ExpenseList(db.Model):
     expense_type = db.Column(db.String(255))
     frequency = db.Column(db.String(255))
     date = db.Column(db.DateTime)
+    acc_id = db.Column(db.Integer, db.ForeignKey('account.id'))
 
-    def __init__(self, name, cost, tier, expense_type, frequency, date):
+    def __init__(self, name, cost, tier, expense_type, frequency, date,acc_id):
         self.name = name
         self.cost = cost
         self.tier = tier
         self.expense_type = expense_type
         self.frequency = frequency
         self.date = date
+        self.acc_id = acc_id
 
     def __repr__(self):
         return '<ExpenseList %r>' % self.name
@@ -77,12 +80,14 @@ class IncomeChannel(db.Model):
     monthly_earning = db.Column(db.Numeric(10, 2))
     frequency = db.Column(db.String(255))
     date = db.Column(db.DateTime)
+    acc_id = db.Column(db.Integer, db.ForeignKey('account.id'))
 
-    def __init__(self, name, monthly_earning,frequency,date):
+    def __init__(self, name, monthly_earning,frequency,date,acc_id):
         self.name = name
         self.monthly_earning = monthly_earning
         self.frequency = frequency
         self.date = date
+        self.acc_id = acc_id
 
     def __repr__(self):
         return '<IncomeChannel %r>' % self.name

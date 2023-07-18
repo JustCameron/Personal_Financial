@@ -22,6 +22,49 @@ from flask_login import login_user, logout_user, current_user, login_required
 # Routing for your application.
 ###
 
+user_id = 0
+
+@app.route('/login', methods=['POST', 'GET'])
+def login(): 
+    global user_id
+    if (request.method=='POST'):
+        email = request.form.get('email')
+        print(email)
+        password = request.form.get('password')
+        # Get the username and password values from the flutter.
+
+        user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
+
+        if user is not None and check_password_hash(user.password, password): #checks password
+            
+            # Gets user id, load into session
+            login_user(user)
+            user_id = user.id
+            #print(current_user.is_authenticated())
+            
+            response_data = {'message': 'Success'}
+            print('valid user')
+            return jsonify(response_data)
+        else:
+            response_data = {'message': 'Failed'}
+            print('invalid user or incorrect credentials')
+            return jsonify(response_data)
+
+@login_manager.user_loader
+def load_user(id):   
+    return db.session.execute(db.select(Account).filter_by(id=id)).scalar()   
+
+@app.route('/logout', methods=['POST'] )
+def logout():
+    global user_id
+    if (request.method=='POST'):
+        print(user_id)
+        user_id = 0
+        print(user_id)
+        logout_user()
+        response_data = {'message': 'Success'}
+        return jsonify(response_data)
+
 @app.route('/')
 def home():
     """Render website's home page."""
@@ -34,6 +77,7 @@ def about():
 
 @app.route('/expense/add',methods=['POST']) #Sends expense added to db
 def add_expense():
+    global user_id
     if (request.method=='POST'):
         
         name = request.form.get('name')
@@ -42,9 +86,10 @@ def add_expense():
         expense_type = request.form.get('expenseType')
         frequency = request.form.get('frequency')
         date = datetime.datetime.now() #assuming we get current date/time and place it in the DB
-        
-        print(name,cost,tier,expense_type,frequency,date)     
-        newExpense = ExpenseList(name,cost,tier,expense_type,frequency,date)
+        acc_id = user_id
+
+        print(name,cost,tier,expense_type,frequency,date,acc_id)     
+        newExpense = ExpenseList(name,cost,tier,expense_type,frequency,date,acc_id)
         db.session.add(newExpense)
         db.session.commit()        
 
@@ -53,15 +98,17 @@ def add_expense():
 
 @app.route('/incomeChannel/add',methods=['POST']) #Sends income_channel added to db
 def add_income_channel():
+    global user_id
     if (request.method=='POST'):
         
         name = request.form.get('name')
         monthly_earning = request.form.get('monthly_earning')
         frequency = request.form.get('frequency')
         date = datetime.datetime.now() #assuming we get current date/time and place it in the DB
+        acc_id = user_id
         
-        print(name,monthly_earning,frequency,date)     
-        newIncomeChannel = IncomeChannel(name,monthly_earning,frequency,date)
+        print(name,monthly_earning,frequency,date,acc_id)     
+        newIncomeChannel = IncomeChannel(name,monthly_earning,frequency,date,acc_id)
         db.session.add(newIncomeChannel)
         db.session.commit()        
 
@@ -96,29 +143,6 @@ def populate():
     return jsonify(expense=e_list,income=i_list)
 
 
-@app.route('/login', methods=['POST', 'GET'])
-def login(): 
-    if (request.method=='POST'):
-        email = request.form.get('email')
-        password = request.form.get('password')
-        # Get the username and password values from the flutter.
-
-        user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
-
-        if user is not None and check_password_hash(user.password, password): #checks password
-            
-            # Gets user id, load into session
-            login_user(user)
-
-            
-            response_data = {'message': 'Success'}
-            print('valid user')
-            return jsonify(response_data)
-        else:
-            response_data = {'message': 'Failed'}
-            print('invalid user or incorrect credentials')
-            return jsonify(response_data)
-
 @app.route('/signup', methods=['POST', 'GET'])
 def signup(): 
     if (request.method=='POST'):
@@ -128,12 +152,12 @@ def signup():
 
         user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
 
-        if user is None: #checks password
+        if user is None: #checks if user present
             
             print(email,password)     
             newuser = Account(email,password)
             db.session.add(newuser)
-            db.session.commit()
+            db.session.commit() #LOGIN USER AFTER DIS
             
             response_data = {'message': 'Success'}
             print('200')
@@ -143,18 +167,6 @@ def signup():
             response_data = {'message': 'Failed'}
             return jsonify(response_data)
            
-    
-@login_manager.user_loader
-def load_user(id):
-    return db.session.execute(db.select(Account).filter_by(id=id)).scalar()   
-
-
-@app.route('/logout', methods=['POST'] )
-def logout():
-    if (request.method=='POST'):
-        logout_user()
-        response_data = {'message': 'Success'}
-        return jsonify(response_data)
 
 ##########################################################################################################
 # The functions below should be applicable to all Flask apps.
