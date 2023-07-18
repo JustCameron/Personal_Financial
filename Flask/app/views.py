@@ -5,13 +5,15 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file contains the routes for your application.
 """
 import os
-from app import app,db
+from app import app,db,login_manager
 from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory,jsonify
-from app.models import ExpenseCategories,ExpenseList,IncomeChannel
+from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account
 from werkzeug.utils import secure_filename
 import json
 from decimal import Decimal
 import datetime
+from werkzeug.security import check_password_hash
+from flask_login import login_user, logout_user, current_user, login_required
 
 #to run flask, run flask --app Flask/app --debug run
 #to migrate and dem tings deh, run  flask --app=Flask/App db init  and change init to smthn migrate/upgrade.
@@ -92,7 +94,69 @@ def populate():
             
     print(jsonify(expense=e_list,income=i_list))
     return jsonify(expense=e_list,income=i_list)
-###
+
+
+@app.route('/login', methods=['POST', 'GET'])
+def login(): 
+    if (request.method=='POST'):
+        email = request.form.get('email')
+        password = request.form.get('password')
+        # Get the username and password values from the flutter.
+
+        user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
+
+        if user is not None and check_password_hash(user.password, password): #checks password
+            
+            # Gets user id, load into session
+            login_user(user)
+
+            
+            response_data = {'message': 'Success'}
+            print('valid user')
+            return jsonify(response_data)
+        else:
+            response_data = {'message': 'Failed'}
+            print('invalid user or incorrect credentials')
+            return jsonify(response_data)
+
+@app.route('/signup', methods=['POST', 'GET'])
+def signup(): 
+    if (request.method=='POST'):
+        email = request.form.get('email')
+        password = request.form.get('password')
+        # Get the username and password values from the flutter.
+
+        user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
+
+        if user is None: #checks password
+            
+            print(email,password)     
+            newuser = Account(email,password)
+            db.session.add(newuser)
+            db.session.commit()
+            
+            response_data = {'message': 'Success'}
+            print('200')
+            return jsonify(response_data)
+        else:
+            print('email already in system!')
+            response_data = {'message': 'Failed'}
+            return jsonify(response_data)
+           
+    
+@login_manager.user_loader
+def load_user(id):
+    return db.session.execute(db.select(Account).filter_by(id=id)).scalar()   
+
+
+@app.route('/logout', methods=['POST'] )
+def logout():
+    if (request.method=='POST'):
+        logout_user()
+        response_data = {'message': 'Success'}
+        return jsonify(response_data)
+
+##########################################################################################################
 # The functions below should be applicable to all Flask apps.
 ###
 

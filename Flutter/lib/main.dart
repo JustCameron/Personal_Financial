@@ -435,6 +435,11 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 onPressed: (){ //After clicking Login
 
+                    //var login = MyApp.of(context).flaskConnect.fetchData('login');
+                  final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
+                  final sentCredentials= MyApp.of(context).flaskConnect.sendData('login', sendCredentials);
+                    //add if statement to populate and change page location if login correct
+
                   //Recieves data from database and adds to respective lists
                   var populate = MyApp.of(context).flaskConnect.fetchData('populate');
                   populate.then((data){
@@ -667,6 +672,10 @@ class _MainPageState extends State<MainPage> {
                 selectedIndex: chosenIndex,
                 onDestinationSelected: (value) { // When an option is selected do something
                   if (value == 4){ //If user selects Logout, first page starts at 0 remember
+                    
+                    // LOGS OUT USER   //idk if clearing of flutter lists need to be done or nah
+                    final leave= {'Left': 'byebi'};                                
+                    final leaved= MyApp.of(context).flaskConnect.sendData('logout', leave);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => MyHomePage()),
@@ -2816,6 +2825,12 @@ class _SignUpPageState extends State<SignUpPage> {
                       side: BorderSide.none, //Removes border colour from button
                     ),
                     onPressed: (){ //After clicking Login
+
+                      // ADDS CREDENTIALS TO DB; SENDS TO FLASK
+                      final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
+                      final sentCredentials= MyApp.of(context).flaskConnect.sendData('signup', sendCredentials);
+                      //what if the user already in deh/incorrect format?
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => FinancialAccountCreationPage()),
@@ -5296,7 +5311,9 @@ class DataConnection {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to fetch data');
+      //throw Exception('Failed to fetch data');
+      print('Failed to fetch data: ${response.statusCode}');
+      return {}; // or return an appropriate default value based on your use case
     }
   }
 
@@ -5309,7 +5326,9 @@ class DataConnection {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to send data');
+      //throw Exception('Failed to send data'); 
+      print('Failed to fetch data: ${response.statusCode}');
+      return {}; // or return an appropriate default value based on your use case
     }
   }
 }

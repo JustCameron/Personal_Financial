@@ -14,3 +14,7 @@ tooltip: 'Complete', onPressed: () { // Go to home page //I would add data here
 child: Text('Income for Today'),  //Dis also kinda sus
 
 //  ADD INCOME TO INCOME LIST
+
+{ //After clicking Login   //signup and signin 
+
+if (value == 4){
