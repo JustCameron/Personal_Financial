@@ -1,0 +1,31 @@
+Any issue at any steps, shout me.
+
+Have the following installed and rdy:
+    -pgAdmin 4
+    -database created using  'SQL Shell (psql)' (open this application which is part of pgAdmin4)
+        
+        -think its gonna ask you to create a password for evertime you open the app...make it simple/memorable
+        if not:-
+        
+        press enter until you see all these:
+        Server [localhost]:
+        Database [postgres]:
+        Port [5432]:
+        Username [postgres]:
+        Password for user postgres:
+        
+        next steps are as follows:
+            create user "pfinance";
+            create database "pfinance";
+            \password pfinance
+            alter database pfinance owner to pfinance;
+
+        copy paste each line above 1 by 1. Once u reach password jus name it 'pfinance' 
+        thing when asked to enter password
+
+After having those installed:
+- To have flask(python) work wid flutter run the following:
+    - ./venv/scripts/activate 
+    - flask --app Flask/app --debug run
+    - run flutter and do whatever.
+- to migrate and dem tings deh, run  flask --app=Flask/App db init  and change init to smthn migrate/upgrade.
