@@ -1483,7 +1483,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                               // flex: 2,
                                               child: Align(
                                                 alignment: Alignment.centerLeft,
-                                                child: Text(appState.getExpenseCost(tuple.first).toString(), //Specifically gets the Name
+                                                child: Text(appState.getExpenseCost(tuple.first).toString(),
                                                   style: TextStyle(
                                                     color: Colors.deepOrangeAccent,
                                                   ),

@@ -4,16 +4,16 @@ Jinja2 Documentation:    https://jinja.palletsprojects.com/
 Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file contains the routes for your application.
 """
-import os
+import os,json,csv,subprocess
 from app import app,db,login_manager
 from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory,jsonify
-from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account
+from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUserData,RecommendationReport
 from werkzeug.utils import secure_filename
-import json
 from decimal import Decimal
 import datetime
 from werkzeug.security import check_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
+from sqlalchemy import and_
 
 #to run flask, run flask --app Flask/app --debug run
 #to migrate and dem tings deh, run  flask --app=Flask/App db init  and change init to smthn migrate/upgrade.
@@ -32,7 +32,6 @@ def login():
         print(email)
         password = request.form.get('password')
         # Get the username and password values from the flutter.
-
         user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
 
         if user is not None and check_password_hash(user.password, password): #checks password
@@ -123,6 +122,7 @@ def populate():
     expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
     for g in expenses: 
             e_list.append({
+                'id': g.id,
                 'name': g.name,
                 'cost': g.cost,
                 'tier': g.tier,
@@ -133,6 +133,7 @@ def populate():
     incomechannels = db.session.execute(db.select(IncomeChannel)).scalars() #also add where the account id is the same as logged in
     for g in incomechannels: 
             i_list.append({
+                'id': g.id,
                 'name': g.name,
                 'monthly_earning': g.monthly_earning,
                 'frequency': g.frequency,
@@ -166,7 +167,91 @@ def signup():
             print('email already in system!')
             response_data = {'message': 'Failed'}
             return jsonify(response_data)
-           
+
+@app.route('/remove',methods=['POST']) #
+def remove():
+    global user_id
+    
+    if (request.method=='POST'):
+        
+        table = request.form.get('table') #IncomeChannel #ExpenseList
+        recordID = request.form.get('record_id')
+        record = db.session.execute(db.select(table).filter_by(id=recordID)).scalar()
+        #record = db.session.execute(db.select(table).filter(and_(id.recordID == value1, table.column2 == value2))).scalar()
+    
+        db.session.delete(record)
+        db.session.commit()        
+
+        #flutter code
+        #final sendExpense= {'table': 'ModelTableName', 'record_id': 'bro idek.'};                                
+        #final sentExpense= MyApp.of(context).flaskConnect.sendData('remove', sendExpense);
+
+        response_data = {'message': 'Success'}
+        return jsonify(response_data)
+    
+
+def make_csv():
+    # Query the table and fetch the data into a list of dictionaries
+    #table_data = session.query(AllUserData).all()
+    table_data = db.session.query(AllUserData).all()
+
+    # Define the CSV file path and name
+    csv_file_path = 'ReccomendationScripts\csvs\sql_to_.csv' #change this
+    
+
+    # Write the data to the CSV file
+    with open(csv_file_path, 'w', newline='') as csvfile:
+        #fieldnames = ['id', 'name', 'cost', 'tier', 'expense_type', 'frequency', 'date', 'acc_id']
+        #Needs_Percent changed to Needs%
+        fieldnames = ['Records','Account_ID','Start_Date', 'Current_Date', 'Beginning_Balance', 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Wants%', 'Needs%','Savings%', 'Min_Goal','Max_Goal','Budget_Increase']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # Write the header row
+        writer.writeheader()
+
+        # Write each row of data
+        for row in table_data:
+            writer.writerow({
+                'Records': row.records,
+                'Account_ID': row.acc_id,
+                'Start_Date': row.start_date,
+                'Current_Date': row.curr_date,
+                'Beginning_Balance': row.beginning_balance,
+                'Monthly_Income': row.monthly_income,
+                'Monthly_Expense': row.monthly_expense,
+                'Current_Balance': row.current_balance,
+                'Wants%': row.wants_percent,
+                'Needs%': row.needs_percent,
+                'Savings%': row.savings_percent,
+                'Min_Goal': row.min_goal,
+                'Max_Goal': row.max_goal,
+                'Budget_Increase': row.budget_increase
+            })
+
+
+def run_script():
+    # Replace 'path_to_script.py' with the actual path to your Python script
+    script_path = 'ReccomendationScripts\reccomender.py'
+    
+    result = subprocess.run(['python', script_path], capture_output=True, text=True)
+    
+    return f"Script output: {result.stdout}"
+
+@app.route('/recommendation/report',methods=['GET']) #Post or get?
+def recommendation():
+    #create to add to all_user_data table
+    #make_csv()
+    ans=run_script()
+    print("bob",ans)
+    #check to see if we can run the recommender in another terminal.
+
+    #DROP TABLE user_goals,all_user_data
+    recommendation_data = {
+        'recommendation': str(ans),
+    }
+
+    # Return a JSON response with the recommendation data
+    return jsonify(recommendation_data)
 
 ##########################################################################################################
 # The functions below should be applicable to all Flask apps.

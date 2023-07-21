@@ -3,7 +3,7 @@ click==8.0.4
 Flask==2.2.3
 Flask-Migrate==4.0.4
 Flask-SQLAlchemy==3.0.3
-Flask-WTF==1.1.1
+Flask-WTF==1.1.1  #is this required?
 greenlet==2.0.2
 gunicorn==20.1.0
 importlib-metadata==6.0.0
@@ -16,6 +16,15 @@ python-dotenv==0.21.1
 SQLAlchemy==2.0.4
 typing_extensions==4.5.0
 Werkzeug==2.2.3
-WTForms==3.0.1
+WTForms==3.0.1   #is this required?
 zipp==3.14.0
 Flask-Login==0.6.2
+pandas==2.0.3
+#mysql.connector==8.1.0
+#psycopg2 too i think
+#pip install -r requirements.txt
+#dotenv
+#flask_sqlalchemy 
+#flask_migrate
+
+
