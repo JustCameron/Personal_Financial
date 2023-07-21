@@ -154,6 +154,10 @@ class MyAppState extends ChangeNotifier {
     balance -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // minus removed income from balance [replaceAll is used here to only get the numbers from the String]
     income -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // subtract removed income [replaceAll is used here to only get the numbers from the String]
     //print (double.parse(exp.replaceAll(RegExp(r'[^0-9,.]'),'')));
+    
+    //final sendIncomeChannel = {'table': IncomeChannel record_id: };           
+    //final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('remove', sendIncomeChannel);
+
     notifyListeners();
   }
 
@@ -439,7 +443,7 @@ class _LoginPageState extends State<LoginPage> {
                   final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
                   final sentCredentials= MyApp.of(context).flaskConnect.sendData('login', sendCredentials);
                     //add if statement to populate and change page location if login correct
-
+                  
                   //Recieves data from database and adds to respective lists
                   var populate = MyApp.of(context).flaskConnect.fetchData('populate');
                   populate.then((data){
@@ -449,12 +453,14 @@ class _LoginPageState extends State<LoginPage> {
                       var name = expense['name'];   
                       var cost = num.parse(expense['cost']); 
                       var tier = expense['tier'];               
-                      var expense_type = expense['expense_type']; 
+                      var expenseType = expense['expense_type']; 
                       var frequency = expense['frequency']; 
                       var date = expense['date']; 
 
                       appState.expenseList.add("$name ${cost.toStringAsFixed(2)}"); //Interpolation
                       appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
+                      appState.expenseTypeList.add(expenseType);
+
                     }
 
                     var incomeList = data['income'];
@@ -672,7 +678,6 @@ class _MainPageState extends State<MainPage> {
                 selectedIndex: chosenIndex,
                 onDestinationSelected: (value) { // When an option is selected do something
                   if (value == 4){ //If user selects Logout, first page starts at 0 remember
-                    
                     // LOGS OUT USER   //idk if clearing of flutter lists need to be done or nah
                     final leave= {'Left': 'byebi'};                                
                     final leaved= MyApp.of(context).flaskConnect.sendData('logout', leave);
@@ -2115,8 +2120,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 appState.spent += appState.expenseCost; // add expense cost to spent
 
                                 // SENDS TO BACKEND
-                                // Dont know which which rank or want need was chosen from above
-                                final sendExpense= {'name': appState.expenseName.toString(), 'cost': appState.expenseCost.toStringAsFixed(2), 'tier': "1", 'expenseType': 'want', 'frequency': 'once'};                                
+                                final sendExpense= {'name': appState.expenseName.toString(), 'cost': appState.expenseCost.toStringAsFixed(2), 'tier': appState.ranks.toString(), 'expenseType': appState.wantORneedchoice.toString(), 'frequency': appState.expenseFreq.toString()};                                
                                 final sentExpense= MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
                               });
                             }, 
@@ -2578,7 +2582,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 appState.income += appState.incomeValue; // add income value to income
                                 
                                 // SENT INCOME TO DB/BACKEND
-                                final sendIncomeChannel = {'name': appState.incomeName.toString(), 'monthly_earning': appState.incomeValue.toStringAsFixed(2),'frequency': 'Once'};                                
+                                final sendIncomeChannel = {'name': appState.incomeName.toString(), 'monthly_earning': appState.incomeValue.toStringAsFixed(2),'frequency': appState.incomeFreq.toString()};           
                                 final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('incomeChannel/add', sendIncomeChannel);
 
                               });

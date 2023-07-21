@@ -4,7 +4,7 @@ Jinja2 Documentation:    https://jinja.palletsprojects.com/
 Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file contains the routes for your application.
 """
-import os,json,csv,subprocess
+import os,json,csv,subprocess,time
 from app import app,db,login_manager
 from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory,jsonify
 from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUserData,RecommendationReport
@@ -17,6 +17,7 @@ from sqlalchemy import and_
 
 #to run flask, run flask --app Flask/app --debug run
 #to migrate and dem tings deh, run  flask --app=Flask/App db init  and change init to smthn migrate/upgrade.
+#git checkout main lib\main.dart to get UI file
 
 ###
 # Routing for your application.
@@ -38,7 +39,9 @@ def login():
             
             # Gets user id, load into session
             login_user(user)
+            print("user.id in login:",user.id)
             user_id = user.id
+            print("user_id in login:",user_id)
             #print(current_user.is_authenticated())
             
             response_data = {'message': 'Success'}
@@ -116,10 +119,18 @@ def add_income_channel():
 
 @app.route('/populate',methods=['GET']) #get from db expense list and income list.
 def populate():
+    time.sleep(2)
+    global user_id
     e_list = []
     i_list = []
 
-    expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
+    #expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
+    expenses = db.session.query(ExpenseList).filter(ExpenseList.acc_id == user_id).all()
+    print('populate user_id',user_id)
+    print(expenses)
+    
+    if expenses == []:
+        return []
     for g in expenses: 
             e_list.append({
                 'id': g.id,
@@ -130,7 +141,8 @@ def populate():
                 'frequency': g.frequency,
                 'date': g.date
                         })
-    incomechannels = db.session.execute(db.select(IncomeChannel)).scalars() #also add where the account id is the same as logged in
+    #incomechannels = db.session.execute(db.select(IncomeChannel).filter_by(acc_id=user_id)).all() #also add where the account id is the same as logged in
+    incomechannels=db.session.query(IncomeChannel).filter(IncomeChannel.acc_id == user_id).all()
     for g in incomechannels: 
             i_list.append({
                 'id': g.id,

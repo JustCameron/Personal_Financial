@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash
 class Account(db.Model):
     __tablename__ = 'account'
     #i kept id just incase we'll need it later on for goals. so if you dont want it feel free to delete it
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)   #we should change these to like "PFI1" Personal Finince Indentification  
     email = db.Column(db.String(255),nullable=False)
     password = db.Column(db.String(255),nullable=False) #add beginning balance here.
 
@@ -38,7 +38,7 @@ class ExpenseList(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255))
     cost = db.Column(db.Numeric(10, 2))
-    tier = db.Column(db.Integer)
+    tier = db.Column(db.String(2))
     expense_type = db.Column(db.String(255))
     frequency = db.Column(db.String(255))
     date = db.Column(db.DateTime)

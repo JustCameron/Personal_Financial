@@ -18,3 +18,7 @@ child: Text('Income for Today'),  //Dis also kinda sus
 { //After clicking Login   //signup and signin 
 
 if (value == 4){
+
+ // Expense Button To Delete   //delete
+
+ add 4 some how being the ID yzm
