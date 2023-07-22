@@ -54,7 +54,7 @@ class ExpenseList(db.Model):
         self.acc_id = acc_id
 
     def __repr__(self):
-        return '<ExpenseList %r>' % self.name
+        return '<ExpenseList %r>' % self.id
 
 
 
@@ -69,7 +69,7 @@ class ExpenseCategories(db.Model):
         self.ttl_cost = ttl_cost
 
     def __repr__(self):
-        return '<ExpenseCategories %r>' % self.name
+        return '<ExpenseCategories %r>' % self.id
 
     
 
@@ -90,7 +90,7 @@ class IncomeChannel(db.Model):
         self.acc_id = acc_id
 
     def __repr__(self):
-        return '<IncomeChannel %r>' % self.name
+        return '<IncomeChannel %r>' % self.id
     
 class RecommendationReport(db.Model):
     __tablename__ = 'recommendation_report'

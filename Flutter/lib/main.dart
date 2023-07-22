@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
   static MyApp of(BuildContext context) { //required to run DataConnection calls
     return context.findAncestorWidgetOfExactType<MyApp>()!;
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -65,6 +65,8 @@ class MyAppState extends ChangeNotifier {
   var expenseTypeList = [];
   var rankList = [];
   var expenseFreqList = [];
+  var incomeFreqList = [];
+  var expenseidList = [];
   List<String> creditCardList = <String>['Mastercard', 'Scotia', 'Sagicor', 'Paypal'];
   List<String> marriedOrSingleList = <String>['Single', 'Married'];
   List<String> wantORneed = <String>['Want', 'Need'];
@@ -92,6 +94,7 @@ class MyAppState extends ChangeNotifier {
   DateTime selectedDate = DateTime.now();
   String expenseName = "";
   String incomeName = "";
+  String expenseID = ""; ////Yassso
   double expenseCost = 0.00;
   double incomeValue = 0.00;
   String fullexpense = "";
@@ -133,9 +136,19 @@ class MyAppState extends ChangeNotifier {
   );
   //Miscs
   double currExpCost = 0.00;
-  double currIncCost = 0.00;
+  double currIncEarn = 0.00;
   var currExpName = "";
   var currIncName = "";
+
+  //WANTS/NEEDS/SAVINGS PERCENTAGES
+  double wantPercentage = 0.00;
+  double needPercentage = 0.00;
+  double savingsPercentage = 0.00;
+
+  //Stuff For Jon
+  double wantTotal = 0.00; // Keep track of total spent on wants - For Jon
+  double needTotal = 0.00; // Keep track of total spent on needs - For Jon
+
 
   void removeExpense(exp){ //Remove clicked Expense from Expense List
     expenseList.remove(exp);
@@ -149,32 +162,41 @@ class MyAppState extends ChangeNotifier {
 
    removeIncome(inc){ //Remove clicked Income from Income List
     incomeList.remove(inc);
-    //   appState.balance -= appState.expenseCost; // subtract expense from balance
-    // appState.spent += appState.expenseCost; // add expense cost to spent
     balance -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // minus removed income from balance [replaceAll is used here to only get the numbers from the String]
     income -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // subtract removed income [replaceAll is used here to only get the numbers from the String]
     //print (double.parse(exp.replaceAll(RegExp(r'[^0-9,.]'),'')));
-    
     //final sendIncomeChannel = {'table': IncomeChannel record_id: };           
     //final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('remove', sendIncomeChannel);
-
     notifyListeners();
   }
 
-  double getExpenseCost(exp){ //Remove clicked Income from Income List
+  double getExpenseCost(exp){ //Get only Expense Cost for specific Expense
     var where = expenseList.indexOf(exp);
     currExpCost = double.parse(expenseList[where].replaceAll(RegExp(r'[^0-9,.]'),''));
     // notifyListeners();
     return currExpCost;
   }
 
-  String getExpenseName(exp){ //Remove clicked Income from Income List
+  String getExpenseName(exp){ //Get only Expense Name for specific Expense
     var where = expenseList.indexOf(exp);
     currExpName = expenseList[where].replaceAll(RegExp(r'[^a-z,^A-Z]'),'');
     // notifyListeners();
     return currExpName;
   }
 
+  double getIncomeEarning(inc){ //Get only Earnings for specific Income Channel
+    var where = incomeList.indexOf(inc);
+    currIncEarn = double.parse(incomeList[where].replaceAll(RegExp(r'[^0-9,.]'),''));
+    // notifyListeners();
+    return currIncEarn;
+  }
+
+  String getIncomeName(inc){ //Get only Income Name for specific Income Channel
+    var where = incomeList.indexOf(inc);
+    currIncName = incomeList[where].replaceAll(RegExp(r'[^a-z,^A-Z]'),'');
+    // notifyListeners();
+    return currIncName;
+  }
 }
 class MyHomePage extends StatefulWidget {
   @override
@@ -437,9 +459,8 @@ class _LoginPageState extends State<LoginPage> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                   side: BorderSide.none, //Removes border colour from button
                 ),
-                onPressed: (){ //After clicking Login
-
-                    //var login = MyApp.of(context).flaskConnect.fetchData('login');
+                onPressed: (){  //After clicking Login
+                      //var login = MyApp.of(context).flaskConnect.fetchData('login');
                   final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
                   final sentCredentials= MyApp.of(context).flaskConnect.sendData('login', sendCredentials);
                     //add if statement to populate and change page location if login correct
@@ -450,6 +471,7 @@ class _LoginPageState extends State<LoginPage> {
                     var expenseList = data['expense'];
                     print('Message: $expenseList');
                     for (var expense in expenseList) {
+                      var id = expense['id'];
                       var name = expense['name'];   
                       var cost = num.parse(expense['cost']); 
                       var tier = expense['tier'];               
@@ -457,25 +479,124 @@ class _LoginPageState extends State<LoginPage> {
                       var frequency = expense['frequency']; 
                       var date = expense['date']; 
 
-                      appState.expenseList.add("$name ${cost.toStringAsFixed(2)}"); //Interpolation
+                      appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
                       appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
-                      appState.expenseTypeList.add(expenseType);
+                      appState.expenseidList.add((id.toString()));
+                      
+                        //Different WANT/NEED Symbols
+                        if (expenseType == "Want") {
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5),
+                            child: appState.wantneedIcon = Icon(
+                              Icons.store_mall_directory,
+                              color: Colors.blueAccent,
+                            ),
+                          );
+                        
+                        } else {
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5),
+                            child: appState.wantneedIcon = Icon(
+                              Icons.house,
+                              color: Colors.green
+                              ),
+                          );
+                        }
+                      appState.type = appState.wantneedIcon;
+                      appState.expenseTypeList.add(appState.type);
 
-                    }
+                      //Different EXPENSE RANKINGS Symbols
+                      if (tier == "T1") {
+                        Padding(
+                          padding: const EdgeInsets.only(left: 5, top: 3),
+                          child: appState.rankIcon = Icon(
+                            Icons.looks_one,
+                            color: Color.fromARGB(255, 180, 166, 35),
+                          ),
+                        );                        
+                      } 
+                      else if (tier == "T2") {
+                          Padding(
+                          padding: const EdgeInsets.only(left: 5, top: 3),
+                          child: appState.rankIcon = Icon(
+                            Icons.looks_two,
+                            color: Colors.orange
+                            ),
+                        );
+                      } 
+                      else if (tier == "T3") {
+                            Padding(
+                            padding: const EdgeInsets.only(left: 5, top: 3),
+                            child: appState.rankIcon = Icon(
+                            Icons.looks_3,
+                            color: Colors.red
+                            ),
+                            );
+                      }
+                      appState.rankIcon = appState.rankIcon;
+                      appState.rankList.add(appState.rankIcon);
+
+                      if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+                        Padding(
+                          padding: const EdgeInsets.only(left: 5, top: 3),
+                          child: appState.frequencyIcon = Icon(
+                            Icons.one_x_mobiledata_outlined,
+                            color: Colors.blueGrey,
+                          ),
+                        );
+                        }
+                      else{ 
+                        Padding(
+                          padding: const EdgeInsets.only(left: 5),
+                          child: appState.frequencyIcon = Icon(
+                            Icons.calendar_month,
+                            color: Colors.blueGrey
+                            ),
+                        );
+                      }
+                      appState.expenseFreqList.add(appState.frequencyIcon);
+
+
+
+
+                    }//end for 
+                    
 
                     var incomeList = data['income'];
                     print('Message: $incomeList');
                     for (var income in incomeList) {
+                      var id = income['id'];
                       var name = income['name'];   
                       var monthlyEarning = num.parse(income['monthly_earning']); 
                       var frequency = income['frequency']; 
                       var date = income['date']; 
 
-                      appState.incomeList.add("$name ${monthlyEarning.toStringAsFixed(2)}"); //Interpolation
+                      appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
                       appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
+                    
+                      
+                      if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+                        Padding(
+                          padding: const EdgeInsets.only(left: 5, top: 3),
+                          child: appState.incomeFrequencyIcon = Icon(
+                            Icons.one_x_mobiledata_outlined,
+                            color: Colors.blueGrey,
+                          ),
+                        );
+                        }
+                      else{ 
+                        Padding(
+                          padding: const EdgeInsets.only(left: 5),
+                          child: appState.incomeFrequencyIcon = Icon(
+                            Icons.calendar_month,
+                            color: Colors.blueGrey
+                            ),
+                        );
+                      }
+                      appState.incomeFreqList.add(appState.incomeFrequencyIcon);
                     }
 
-                  }); 
+                  });  
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
@@ -679,7 +800,7 @@ class _MainPageState extends State<MainPage> {
                 onDestinationSelected: (value) { // When an option is selected do something
                   if (value == 4){ //If user selects Logout, first page starts at 0 remember
                     // LOGS OUT USER   //idk if clearing of flutter lists need to be done or nah
-                    final leave= {'Left': 'byebi'};                                
+                    final leave= {'Left': 'Logout'};                                
                     final leaved= MyApp.of(context).flaskConnect.sendData('logout', leave);
                   Navigator.push(
                     context,
@@ -1159,7 +1280,18 @@ class _DashboardPageState extends State<DashboardPage> {
     late Icon incomeFrequencyIcon;
     late String type;
 
-    var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList]);
+    // To check if the expense type is want or need (used in Add Expense)
+    Icon want = Icon(
+      Icons.store_mall_directory,
+      color: Colors.blueAccent,
+      );
+    Icon need = Icon(
+      Icons.house,
+      color: Colors.green
+      );
+
+    var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList,appState.expenseidList]); //Added a list
+    var incomeZippedLists = IterableZip([appState.incomeList, appState.incomeFreqList]);
 
     final addExpenseNameController = TextEditingController();
     final addExpenseCostController = TextEditingController();
@@ -1488,7 +1620,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                               // flex: 2,
                                               child: Align(
                                                 alignment: Alignment.centerLeft,
-                                                child: Text(appState.getExpenseCost(tuple.first).toString(),
+                                                child: Text(appState.getExpenseCost(tuple.first).toString(), //Specifically gets the Name
                                                   style: TextStyle(
                                                     color: Colors.deepOrangeAccent,
                                                   ),
@@ -2105,7 +2237,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           height: 40,
                           child: IconButton(
                             onPressed: (){
-                              setState(() {
+                              setState(()  {
                                 // UPDATE ICONS
                                 appState.type = wantneedIcon;
                                 appState.expenseTypeList.add(appState.type);
@@ -2113,15 +2245,46 @@ class _DashboardPageState extends State<DashboardPage> {
                                 appState.rankList.add(appState.rankIcon);
                                 appState.frequencyIcon = frequencyIcon;
                                 appState.expenseFreqList.add(appState.frequencyIcon);
+                                // CALCULATE WANT/NEED AMOUNTS TO BE USED FOR PERCENTAGES
+                                if (appState.type.icon == want.icon){ // Dot operators to compare specifically the icons
+                                  // print("Happened");
+                                  appState.wantTotal += appState.expenseCost;
+                                  }
+                                else if(appState.type.icon == need.icon){ // Dot operators to compare specifically the icons
+                                  // print("Happened");
+                                  appState.needTotal += appState.expenseCost;
+                                }
                                 //  ADD EXPENSE TO EXPENSE LIST
                                 appState.expenseList.add(("${appState.expenseName} ${appState.expenseCost.toStringAsFixed(2)}")); //Interpolation
                                 appState.expenseCostList.add((appState.expenseName, appState.expenseCost)); // Separate list for calcualtions
                                 appState.balance -= appState.expenseCost; // subtract expense from balance
                                 appState.spent += appState.expenseCost; // add expense cost to spent
 
+                                ///SEND AND RECIEVE THE ID HERE FROM THE RESPONSE!!!
+                                
+
+                                // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income]
+                                appState.wantPercentage = appState.wantTotal / appState.income;
+                                appState.needPercentage = appState.needTotal / appState.income;
+                                appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
+                              
                                 // SENDS TO BACKEND
                                 final sendExpense= {'name': appState.expenseName.toString(), 'cost': appState.expenseCost.toStringAsFixed(2), 'tier': appState.ranks.toString(), 'expenseType': appState.wantORneedchoice.toString(), 'frequency': appState.expenseFreq.toString()};                                
-                                final sentExpense= MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
+                                final sentExpense=  MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
+
+                                sentExpense.then((data){ var id = data['message']; 
+                                  print("The ID sent $id");
+                                  appState.expenseID = id.toString();
+                                  appState.expenseidList.add((appState.expenseID));
+
+                                });
+                                
+                                
+                                
+
+                                // appState.expenseID = sentExpense.toString();
+                                // appState.expenseidList.add((appState.expenseID));
+                                // print("The ID sent ${appState.expenseID}");
                               });
                             }, 
                             icon: Icon(Icons.add), // The plus icon
@@ -2197,42 +2360,109 @@ class _DashboardPageState extends State<DashboardPage> {
                                 width: 920,
                                 child: Column(
                                   children: [
-                                    if (appState.incomeList != []) //Displays Income channels if list isn't emtpy
-                                      for (var income in appState.incomeList) //Get all income channels
+                                    if (appState.incomeList.isNotEmpty) //Displays Columns if list isn't emtpy
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            // flex: 2,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(left:15),
+                                              child: Text("NAME", //Specifically gets the Name
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded( //Specifically gets the Cost
+                                            // flex: 5,
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text("EARNINGS", //Specifically gets the Name
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded( //Specifically gets the Cost
+                                            // flex: 1,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text("               FREQ     DEL      ", //Specifically gets the Name
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    if (appState.incomeList != []) //Displays Expenses if list isn't emtpy
+                                      for (var tuple in incomeZippedLists)//Get all expenses
+                                        // 1st = Expense, 2nd = Want/Need, 3rd = Rank, 4th = Frequency
                                         Row(
                                           children: [
-                                            //  Money Icon and Income Text Part
+                                            //  Money Icon and Expense Text Part
+                                              Expanded(
+                                                // flex: 2,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(left: 15),
+                                                  child: Text(appState.getIncomeName(tuple.first), //Specifically gets the Name
+                                                    style: TextStyle(
+                                                      color: Colors.deepOrangeAccent,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             Padding(
                                               padding: const EdgeInsets.only(
-                                                left: 5, 
+                                                left: 5,
                                               ),
-                                              child: incomeFrequencyIcon = Icon(Icons.attach_money_rounded, 
-                                              color: Colors.deepPurpleAccent,
-                                              ),
-                                            ),
-                                            Text(income,
-                                              style: TextStyle(
-                                                color: Colors.deepPurpleAccent,
+                                              child: Icon(Icons.attach_money_rounded, 
+                                              color: Colors.deepOrangeAccent,
                                               ),
                                             ),
-                                            
+                                            Expanded( //Specifically gets the Earnings
+                                              // flex: 2,
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(appState.getIncomeEarning(tuple.first).toString(), //Specifically gets the Name
+                                                  style: TextStyle(
+                                                    color: Colors.deepOrangeAccent,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
                                             //  Remove Button
                                             Expanded( // Aligns it nicely to the right
                                               child: Align(
                                                 alignment: Alignment.centerRight,
-                                                child: TextButton( // Income Button To Delete
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      appState.removeIncome(income);
-                                                      //print(appState.expenseList);
-                                                    });
-                                                  },
-                                              
-                                                  child: Icon(Icons.delete,
-                                                    size: 20,
-                                                    color: Colors.red,
-                                                  ),
-                                                  ),
+                                                child: Row(
+                                                  children: [
+                                                    SizedBox(width: 196,),
+                                                    tuple.elementAt(1), // Frequency Icon
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(left: 10),
+                                                      child: TextButton( // Income Button To Delete
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            appState.removeIncome(tuple.first);
+                                                            //final removeExpenseFromID = {'id': tuple.elementAt(4) };           
+                                                            //final removedExpensefromID = MyApp.of(context).flaskConnect.sendData('remove', removeExpenseFromID);
+                                                            //print(appState.expenseList);
+                                                          });
+                                                        },
+                                                                                                  
+                                                        child: Icon(Icons.delete,
+                                                          size: 20,
+                                                          color: Colors.red,
+                                                        ),
+                                                        ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -2531,7 +2761,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 if (appState.incomeFreq == "One-Time") //Different INCOME FREQUENCY Symbols
                                   Padding(
                                     padding: const EdgeInsets.only(left: 5),
-                                    child: Icon(
+                                    child: incomeFrequencyIcon = Icon(
                                       Icons.one_x_mobiledata_outlined,
                                       color: Colors.blueGrey,
                                       ),
@@ -2539,7 +2769,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 else
                                   Padding(
                                     padding: const EdgeInsets.only(left: 5),
-                                    child: Icon(
+                                    child: incomeFrequencyIcon = Icon(
                                       Icons.calendar_month,
                                       color: Colors.blueGrey
                                       ),
@@ -2549,10 +2779,11 @@ class _DashboardPageState extends State<DashboardPage> {
               
                             onSelected: (String? choice) { // Called when the user selects an item
                               appState.incomeFreq = choice!; // Set global variable to chosen card
-                              setState(() {
+                              setState(() { 
+                                appState.incomeFrequencyIcon =  incomeFrequencyIcon;
                                 income_freq_dropdownValue = appState.incomeFreq; // Update selected
                               });
-                            },
+                            }
                           ),
                           ),
                           )
@@ -2575,16 +2806,22 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: IconButton(
                             onPressed: (){
                               setState(() {
+                                appState.incomeFrequencyIcon = incomeFrequencyIcon;
+                                appState.incomeFreqList.add(appState.incomeFrequencyIcon);
                                 //  ADD INCOME TO INCOME LIST
                                 appState.incomeList.add(("${appState.incomeName} ${appState.incomeValue.toStringAsFixed(2)}")); //Interpolation
                                 appState.incomeValueList.add((appState.incomeName, appState.incomeValue)); // Separate list for calcualtions
                                 appState.balance += appState.incomeValue; // adds income to remaining balance
                                 appState.income += appState.incomeValue; // add income value to income
-                                
+
+                                // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income]
+                                appState.wantPercentage = appState.wantTotal / appState.income;
+                                appState.needPercentage = appState.needTotal / appState.income;
+                                appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
+
                                 // SENT INCOME TO DB/BACKEND
                                 final sendIncomeChannel = {'name': appState.incomeName.toString(), 'monthly_earning': appState.incomeValue.toStringAsFixed(2),'frequency': appState.incomeFreq.toString()};           
                                 final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('incomeChannel/add', sendIncomeChannel);
-
                               });
                             }, 
                             icon: Icon(Icons.add),
@@ -2829,12 +3066,10 @@ class _SignUpPageState extends State<SignUpPage> {
                       side: BorderSide.none, //Removes border colour from button
                     ),
                     onPressed: (){ //After clicking Login
-
                       // ADDS CREDENTIALS TO DB; SENDS TO FLASK
                       final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
                       final sentCredentials= MyApp.of(context).flaskConnect.sendData('signup', sendCredentials);
                       //what if the user already in deh/incorrect format?
-
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => FinancialAccountCreationPage()),
@@ -4879,9 +5114,23 @@ class _BudgetPageState extends State<BudgetPage> {
     
     var appState = context.watch<MyAppState>();
     var theme = Theme.of(context);
-    List<Color> piechartcolours = [Colors.lightGreen.withOpacity(0.6), Colors.red.withOpacity(0.6)]; //Create list of colours for pie chart
+
+    List<Color> piechartcolours = [Colors.lightGreen.withOpacity(0.6), Colors.blueAccent.withOpacity(0.6), Colors.deepPurple.withOpacity(0.6)]; //Create list of colours for pie chart
     //String piechartText = "Income \n ${appState.income + appState.beginbalance}"; // Income = Monthly Income + Initial Balance. Shows in chart center
     String piechartText = "Total Income \n ${appState.income} \n\n Gross Balance \n ${appState.beginbalance+appState.income}"; // Income = Income, Gross Balance = Income + Beginning Balance
+
+    // Current Percentages
+    print(appState.wantTotal);
+    print(appState.spent);
+    var wantsPercentage = (appState.wantPercentage*100).toStringAsFixed(2); //toStringAsFixed is pretty much round()
+    var needsPercentage = (appState.needPercentage*100).toStringAsFixed(2);
+    var savingsPercentage = (appState.savingsPercentage).toStringAsFixed(2);
+
+    // Recommended Percentages [not done]
+    double recommendedWantsPercentage = 0.0;
+    double recommendedNeedsPercentage = 0.0;
+    double recommendedSavingsPercentage = 0.0;
+    
 
     // Get Month:
     DateTime currentDate = DateTime.now(); //Get Current Date
@@ -4939,16 +5188,16 @@ class _BudgetPageState extends State<BudgetPage> {
 
 
     //Create Data points for pie chart
-    //DO: Replace with 'Needs, Wants, Savings' once categories are implemented for expenses
     Map<String, double> dataMap = {
-      "Savings": appState.balance,
-      "Expenses": appState.spent,
+      "Needs": appState.needTotal,
+      "Wants": appState.wantTotal,
+      "Savings": appState.income - (appState.needTotal + appState.wantTotal),
     };
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Padding( // BUDGET HEADING
+            Padding( // REPORT HEADING
               padding: const EdgeInsets.only(
                 left: 50,
                 right: 0,
@@ -4957,7 +5206,7 @@ class _BudgetPageState extends State<BudgetPage> {
               ),
               child: Align(
                 alignment: Alignment.topLeft,
-                child: Text("Budget",
+                child: Text("Report",
                   style: TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.bold,
@@ -4989,7 +5238,7 @@ class _BudgetPageState extends State<BudgetPage> {
               ),
             ),
       
-            Padding( // REMAINING TO BUDGET HEADING
+            Padding( // REMAINING HEADING
               padding: const EdgeInsets.only(
                 left: 0,
                 right: 70,
@@ -5011,7 +5260,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     ),
                   ),
                   // The Text After
-                  Text(" left to Budget",
+                  Text(" leftover",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -5068,13 +5317,195 @@ class _BudgetPageState extends State<BudgetPage> {
                     ),
                     ),
                 ),
+
+                // RECOMMENDATIONS AREA
+                Padding(
+                  padding: const EdgeInsets.only(left:210),
+                  child: Container(
+                    height: 200,
+                    width: 500,
+                    // color: Colors.amber,
+                    child: Column(
+                      children: [
+                        Align(
+                          alignment: Alignment.topCenter,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text("Recommendations",
+                              style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: "Nato Sans"
+                                            ),
+                            ),
+                          )
+
+                          ),
+                        Row( // Row with Current and Optimal Headings
+                          children: [
+                            Expanded(flex: 2,child: Text(""),),
+                            Expanded(flex: 6,child: Padding(
+                              padding: const EdgeInsets.only(left: 15),
+                              child: Text("Current"),
+                            )),
+                            Expanded(flex: 4,child: Padding(
+                              padding: const EdgeInsets.only(left: 15),
+                              child: Text("Optimal"),
+                            )),
+                          ],
+                        ),
+                        // Divider Line for Columns
+                        Divider(
+                          color: Colors.grey,
+                          height: 5,
+                          indent: 65,
+                          endIndent: 65,
+                          ),
+
+                        Row( // Row with Current Wants % and Optimal Wants %
+                          children: [
+                            Expanded(flex: 2,child: Text(""),),
+                            
+                            Expanded(flex: 6,child: Text("Wants %: $wantsPercentage",
+                              style: TextStyle(
+                                fontFamily: "Roboto"
+                              ),
+                            )),
+                            Expanded(flex: 4,child: Text("Wants %: $recommendedWantsPercentage",
+                                style: TextStyle(
+                                fontFamily: "Roboto"
+                                )
+                            )),
+                          ],
+                        ),
+                        Row( // Row with Current Needs % and Optimal Needs % Headings
+                          children: [
+                            Expanded(flex: 2,child: Text(""),),
+                            Expanded(flex: 6,child: Text("Needs %: $needsPercentage",
+                                style: TextStyle(
+                                fontFamily: "Roboto"
+                                )
+                            )),
+                            Expanded(flex: 4,child: Text("Needs %: $recommendedNeedsPercentage",
+                                style: TextStyle(
+                                fontFamily: "Roboto"
+                                )
+                            )),
+                          ],
+                        ),
+                        Row( // Row with Current Savings % and Optimal Savings % Headings
+                          children: [
+                            Expanded(flex: 2,child: Text(""),),
+                            Expanded(flex: 6,child: Text("Savings %: $savingsPercentage",
+                                style: TextStyle(
+                                fontFamily: "Roboto"
+                                )
+                            )),
+                            Expanded(flex: 4,child: Text("Savings %: $recommendedSavingsPercentage",
+                                style: TextStyle(
+                                fontFamily: "Roboto"
+                                )
+                            )),
+                          ],
+                        ),
+
+                      ],
+                    )
+                      ),
+                )
+
+              ],
+            ),
       
+            // EXPENSES FOR MONTH
+            Row(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                    top: 10,
+                    ),
+                    child: Align( //align container
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 500,
+                        decoration: BoxDecoration(
+                          //border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                          color: Colors.grey.withOpacity(0.2),
+                        ),
+      
+                        child: Align( //align everything inside box
+                          alignment: Alignment.centerLeft,
+                          child: SizedBox(
+                            width: 920,
+                            child: Column(
+                              children: [
+      
+                                Row(
+                                  children: [
+                                    Expanded(child: Padding( //Income for Current Month
+                                      padding: const EdgeInsets.only(left: 10, top: 10),
+                                      child: Text('Expenses for $currentMonth'),
+                                    )),
+                                    Expanded(child: Padding( //Cost Text
+                                      padding: const EdgeInsets.only(left: 184, top: 10),
+                                      child: Text('Cost'),
+                                    )),
+                                  ],
+                                ),
+      
+                                Divider(color: Colors.grey,),
+      
+                                if (appState.expenseList != []) //Displays Expenses if list isn't emtpy
+                                  for (var expense in appState.expenseList) //Get all expenses
+                                    Row(
+                                      children: [
+                                        //  Money Icon and Expense Text Part
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 5,
+                                          ),
+                                          child: Icon(Icons.attach_money_rounded, 
+                                          //color: Colors.deepOrangeAccent,
+                                          ),
+                                        ),
+                                        Text(expense.replaceAll(RegExp(r'[^A-Z,a-z]'),''),
+                                          style: TextStyle(
+                                            //color: Colors.deepOrangeAccent,
+                                          ),
+                                        ),
+      
+                                        //  COST OF EXPENSE
+                                        Expanded( // Aligns it nicely to the right
+                                          child: Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(right: 30),
+                                              child: Text(expense.replaceAll(RegExp(r'[^0-9,.]'),'') // Expense Button To Delete
+                                                  
+                                                ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                              ],
+                            )
+                            ),
+                        ),
+                      ),
+                    ),
+                  ),
+      
+                ),
                 // INCOME CHANNELS FOR MONTH
                 Padding(
                   padding: const EdgeInsets.only(
-                    left: 200,
+                    left: 100,
                     right: 0,
-                    top: 30,
+                    top: 0,
                     bottom: 0,
                   ),
                   child: Align(
@@ -5199,88 +5630,6 @@ class _BudgetPageState extends State<BudgetPage> {
                   ),
                 ),
               ],
-            ),
-      
-            // EXPENSES FOR MONTH
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(
-                top: 10,
-                ),
-                child: Align( //align container
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 500,
-                    decoration: BoxDecoration(
-                      //border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
-                      borderRadius: BorderRadius.all(Radius.circular(10)),
-                      color: Colors.grey.withOpacity(0.2),
-                    ),
-      
-                    child: Align( //align everything inside box
-                      alignment: Alignment.centerLeft,
-                      child: SizedBox(
-                        width: 920,
-                        child: Column(
-                          children: [
-      
-                            Row(
-                              children: [
-                                Expanded(child: Padding( //Income for Current Month
-                                  padding: const EdgeInsets.only(left: 10, top: 10),
-                                  child: Text('Expenses for $currentMonth'),
-                                )),
-                                Expanded(child: Padding( //Cost Text
-                                  padding: const EdgeInsets.only(left: 184, top: 10),
-                                  child: Text('Cost'),
-                                )),
-                              ],
-                            ),
-      
-                            Divider(color: Colors.grey,),
-      
-                            if (appState.expenseList != []) //Displays Expenses if list isn't emtpy
-                              for (var expense in appState.expenseList) //Get all expenses
-                                Row(
-                                  children: [
-                                    //  Money Icon and Expense Text Part
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 5,
-                                      ),
-                                      child: Icon(Icons.attach_money_rounded, 
-                                      //color: Colors.deepOrangeAccent,
-                                      ),
-                                    ),
-                                    Text(expense.replaceAll(RegExp(r'[^A-Z,a-z]'),''),
-                                      style: TextStyle(
-                                        //color: Colors.deepOrangeAccent,
-                                      ),
-                                    ),
-      
-                                    //  COST OF EXPENSE
-                                    Expanded( // Aligns it nicely to the right
-                                      child: Align(
-                                        alignment: Alignment.centerRight,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(right: 30),
-                                          child: Text(expense.replaceAll(RegExp(r'[^0-9,.]'),'') // Expense Button To Delete
-                                              
-                                            ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                          ],
-                        )
-                        ),
-                    ),
-                  ),
-                ),
-              ),
-      
             ),
           ],
         ),

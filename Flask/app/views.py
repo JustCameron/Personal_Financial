@@ -95,7 +95,8 @@ def add_expense():
         db.session.add(newExpense)
         db.session.commit()        
 
-        response_data = {'message': 'Success'}
+        newID=newExpense.id
+        response_data = {'message': newID}
         return jsonify(response_data)
 
 @app.route('/incomeChannel/add',methods=['POST']) #Sends income_channel added to db
@@ -112,9 +113,12 @@ def add_income_channel():
         print(name,monthly_earning,frequency,date,acc_id)     
         newIncomeChannel = IncomeChannel(name,monthly_earning,frequency,date,acc_id)
         db.session.add(newIncomeChannel)
-        db.session.commit()        
+        db.session.commit()       
+        
+        #time.sleep(2)
+        newID=newIncomeChannel.id 
 
-        response_data = {'message': 'Success'}
+        response_data = {'message': newID}
         return jsonify(response_data)
 
 @app.route('/populate',methods=['GET']) #get from db expense list and income list.
