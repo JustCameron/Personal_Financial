@@ -13,7 +13,8 @@ from decimal import Decimal
 import datetime
 from werkzeug.security import check_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
-from sqlalchemy import and_
+from sqlalchemy import and_, text
+import pandas as pd
 
 #to run flask, run flask --app Flask/app --debug run
 #to migrate and dem tings deh, run  flask --app=Flask/App db init  and change init to smthn migrate/upgrade.
@@ -243,27 +244,22 @@ def make_csv():
 
 def run_script():
     # Replace 'path_to_script.py' with the actual path to your Python script
-    script_path = 'ReccomendationScripts\reccomender.py'
-    
-    result = subprocess.run(['python', script_path], capture_output=True, text=True)
-    
-    return f"Script output: {result.stdout}"
+    script_path = 'ReccomendationScripts\\reccomender.py'
+    #result=None
+    #result = subprocess.run(['python3', script_path], capture_output=True, text=True)
+    result = subprocess.run(['python', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-@app.route('/recommendation/report',methods=['GET']) #Post or get?
-def recommendation():
-    #create to add to all_user_data table
-    #make_csv()
-    ans=run_script()
-    print("bob",ans)
-    #check to see if we can run the recommender in another terminal.
+    #time.sleep(5)
+    #return f"Script output: {result.stdout}"
+    output= result.stdout.strip()
+    try:
+        needs, wants, savings = map(int, output.split(","))
+        return needs, wants, savings
+    except ValueError:
+        print("Error parsing output")
+        return None
 
-    #DROP TABLE user_goals,all_user_data
-    recommendation_data = {
-        'recommendation': str(ans),
-    }
 
-    # Return a JSON response with the recommendation data
-    return jsonify(recommendation_data)
 
 ##########################################################################################################
 # The functions below should be applicable to all Flask apps.
@@ -301,3 +297,109 @@ def add_header(response):
 def page_not_found(error):
     """Custom 404 page."""
     return render_template('404.html'), 404
+
+############## ########### ################## ################################
+##### #### ### ########### ##### # ######### ############  ########################
+######## ###### ############# #### ############################################
+############################ ###### ######## #################################
+
+
+
+
+#This function returns True if num is within (abs)20% of the refnum 
+def compare(refnum,num):
+    diff= abs(((refnum-num)/((refnum+num)/2))*100)
+    if diff<=20:
+        return True
+    else:
+        return False
+
+# This function scans the dataframe for users that meets the requirements of having within a 20% difference of income and
+# expense of the current user.
+#def recommend(vec2): #what it should be
+def recommend():
+    path= 'ReccomendationScripts\csvs\sql_to_.csv'
+    df=pd.read_csv(path)
+    df = df.dropna()
+    df = df.reset_index()
+    df=df.drop(['index'],axis=1)
+
+    df = df.drop(['Start_Date','Current_Date'],axis=1)
+
+    #user value is the last entry within the table:
+    user = df.tail(1)
+    lendf= len(df)-20
+    head=df.head(lendf)
+    refvec1=user 
+    vec2=head
+    
+    indx=[]
+    Monthly_Income=refvec1["Monthly_Income"] # user monthly income
+    Monthly_Expense=refvec1["Monthly_Income"] #user monthly expense
+    for index,row in vec2.iterrows():
+        if  compare(row["Monthly_Income"],int(Monthly_Income)) and compare(row["Monthly_Expense"],int(Monthly_Expense)) and row["Budget_Increase"]>0 :
+            indx.append(index)
+    df_filtered=vec2.filter(items=indx,axis=0)
+    needs=int(df_filtered["Needs%"].mean())
+    wants=int(df_filtered["Wants%"].mean())
+    savings= 100 - (needs+wants)
+    return needs,wants,savings
+
+
+@app.route('/recommendation/report',methods=['GET']) 
+def recommendation():
+    with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
+        sql_script = file.read()
+        with app.app_context():
+            usert= db.session.execute(text(sql_script)).fetchall()
+    if usert: 
+        #print(user)
+            
+        usertbl = [
+            {   
+                'acc_id': j.acc_id,
+                'month': j.month,
+                'current_balance': j.current_balance,
+                'monthly_income': j.monthly_income,
+                'monthly_expenses': j.monthly_expenses,
+                'wants': j.wants_percentage,
+                'needs': j.needs_percentage,
+                'savings': j.savings,
+                'increasedecrease': j.increasedecrease
+
+            }
+            for j in usert]
+        return jsonify(usertbl)
+
+    ans=None
+    #create to add to all_user_data table
+    #make_csv()
+    #ans=run_script()
+
+    ans = recommend()  #dis gonna change to a list from the user
+    print("Recommendation Splits are as follows",ans)
+
+    #DROP TABLE user_goals,all_user_data
+    recommendation_data = {
+        'wants': ans[0],
+        'needs': ans[1],
+        'savings': ans[2]
+    }
+    # Return a JSON response with the recommendation data
+    return jsonify(recommendation_data)
+
+""" 
+with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
+        sql_script = file.read()
+        with app.app_context():
+            events = db.session.execute(text(sql_script)).fetchall()
+"""
+
+"""
+THINGS TO CHANGE:
+expense_list_sample to expense_list
+account_id to acc_id
+expense_type = 'wants' to expense_type = 'Want'
+expense_type = 'needs' to expense_type = 'Need'
+DATE_TRUNC('month', expense_date) AS month, to DATE_TRUNC('month', date) AS month, 
+"""
