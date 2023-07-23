@@ -45,7 +45,7 @@ def login():
             print("user_id in login:",user_id)
             #print(current_user.is_authenticated())
             
-            response_data = {'message': 'Success'}
+            response_data = {'message': 'Success', 'beg_balance': user.beginning_balance}
             print('valid user')
             return jsonify(response_data)
         else:
@@ -81,8 +81,7 @@ def about():
 @app.route('/expense/add',methods=['POST']) #Sends expense added to db
 def add_expense():
     global user_id
-    if (request.method=='POST'):
-        
+    if (request.method=='POST'):  
         name = request.form.get('name')
         cost = request.form.get('cost')
         tier = request.form.get('tier')
@@ -135,7 +134,8 @@ def populate():
     print(expenses)
     
     if expenses == []:
-        return []
+        print("dis [] run")
+        return ["dis [] run"]
     for g in expenses: 
             e_list.append({
                 'id': g.id,
@@ -431,18 +431,15 @@ def recommendation():
 
 @app.route('/splits',methods=['GET']) #get from db RecommendationReport
 def splits():
-    #time.sleep(2)
+    time.sleep(2)
     global user_id
     recList = []
-
-    #expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
     recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
-    #expenses = db.session.query(ExpenseList).filter(ExpenseList.acc_id == user_id).all()
     print('populate user_id',user_id)
     print(recSplits)
     
     if recSplits == []:
-        return []
+        return ["dis2 ac [] run"]
     for rec in recSplits: 
             recList.append({
            'id': rec.id,

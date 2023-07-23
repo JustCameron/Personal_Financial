@@ -469,13 +469,20 @@ class _LoginPageState extends State<LoginPage> {
                       //var login = MyApp.of(context).flaskConnect.fetchData('login');
                   final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
                   final sentCredentials= MyApp.of(context).flaskConnect.sendData('login', sendCredentials);
+                  sentCredentials.then((data){ 
+                    double bBalance = double.parse(data['beg_balance']);                
+                    //print("The ID sent $id");
+                    appState.balance += bBalance; //Dis correct?
+                    appState.beginbalance += bBalance; //would change each month
+                    print("The Beginning balnce sent ${appState.beginbalance}");
+                  });
                     //add if statement to populate and change page location if login correct
                   
                   //Recieves data from database and adds to respective lists
                   var populate = MyApp.of(context).flaskConnect.fetchData('populate');
                   populate.then((data){
                     var expenseList = data['expense'];
-                    print('Message: $expenseList');
+                    print('ExpenseList: $expenseList');
                     for (var expense in expenseList) {
                       var id = expense['id'];
                       var name = expense['name'];   
@@ -576,7 +583,7 @@ class _LoginPageState extends State<LoginPage> {
                     
 
                     var incomeList = data['income'];
-                    print('Message: $incomeList');
+                    print('IncomeList: $incomeList');
                     for (var income in incomeList) {
                       var id = income['id'];
                       var name = income['name'];   
@@ -649,7 +656,7 @@ class _LoginPageState extends State<LoginPage> {
                       appState.recommendedSavingsPercentage = rsavings;
                     }});
 
-                  print('Splits: ${appState.recommendedSavingsPercentage}');
+                  print('Splits OutsideLoop: ${appState.recommendedSavingsPercentage}');
 
                   Navigator.push(
                     context,
@@ -2294,6 +2301,16 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: IconButton(
                             onPressed: (){
                               setState(()  {
+                                // SENDS TO BACKEND
+                                final sendExpense= {'name': appState.expenseName.toString(), 'cost': appState.expenseCost.toStringAsFixed(2), 'tier': appState.ranks.toString(), 'expenseType': appState.wantORneedchoice.toString(), 'frequency': appState.expenseFreq.toString()};                                
+                                final sentExpense=  MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
+
+                                sentExpense.then((data){ var id = data['message']; 
+                                  print("The ID sent $id");
+                                  appState.expenseID = id.toString();
+                                  appState.expenseidList.add((appState.expenseID));
+
+                                });
                                 // UPDATE ICONS
                                 appState.type = wantneedIcon;
                                 appState.expenseTypeList.add(appState.type);
@@ -2324,16 +2341,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 appState.needPercentage = appState.needTotal / appState.income;
                                 appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
                               
-                                // SENDS TO BACKEND
-                                final sendExpense= {'name': appState.expenseName.toString(), 'cost': appState.expenseCost.toStringAsFixed(2), 'tier': appState.ranks.toString(), 'expenseType': appState.wantORneedchoice.toString(), 'frequency': appState.expenseFreq.toString()};                                
-                                final sentExpense=  MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
-
-                                sentExpense.then((data){ var id = data['message']; 
-                                  print("The ID sent $id");
-                                  appState.expenseID = id.toString();
-                                  appState.expenseidList.add((appState.expenseID));
-
-                                });
+                              
                                 
                                 
                                 
@@ -2862,6 +2870,18 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: IconButton(
                             onPressed: (){
                               setState(() {
+                                          // SENT INCOME TO DB/BACKEND
+                                final sendIncomeChannel = {'name': appState.incomeName.toString(), 'monthly_earning': appState.incomeValue.toStringAsFixed(2),'frequency': appState.incomeFreq.toString()};           
+                                final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('incomeChannel/add', sendIncomeChannel);
+
+                                sentIncomeChannel.then((data){ var id = data['message']; 
+                                  print("The ID sent $id");
+                                  appState.incomeID = id.toString();
+                                  appState.incomeidList.add((appState.incomeID));
+
+                                });
+
+                                //UPDATE ICONS
                                 appState.incomeFrequencyIcon = incomeFrequencyIcon;
                                 appState.incomeFreqList.add(appState.incomeFrequencyIcon);
                                 //  ADD INCOME TO INCOME LIST
@@ -2875,16 +2895,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 appState.needPercentage = appState.needTotal / appState.income;
                                 appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
 
-                                // SENT INCOME TO DB/BACKEND
-                                final sendIncomeChannel = {'name': appState.incomeName.toString(), 'monthly_earning': appState.incomeValue.toStringAsFixed(2),'frequency': appState.incomeFreq.toString()};           
-                                final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('incomeChannel/add', sendIncomeChannel);
-
-                                sentIncomeChannel.then((data){ var id = data['message']; 
-                                  print("The ID sent $id");
-                                  appState.incomeID = id.toString();
-                                  appState.incomeidList.add((appState.incomeID));
-
-                                });
+                      
                               
                               });
                             }, 
@@ -6006,6 +6017,8 @@ class DataConnection {
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
+      dynamic decodedData = json.decode(response.body);
+      print("decoded data $decodedData");
       return json.decode(response.body);
     } else {
       throw Exception('Failed to fetch data');

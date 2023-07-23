@@ -8,10 +8,12 @@ class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)   #we should change these to like "PFI1" Personal Finince Indentification  
     email = db.Column(db.String(255),nullable=False)
     password = db.Column(db.String(255),nullable=False) #add beginning balance here.
+    beginning_balance = db.Column(db.Numeric(10, 2))
 
-    def __init__(self, email, password):
+    def __init__(self, email, password, beginning_balance):
         self.email = email
         self.password = generate_password_hash(password, method='pbkdf2:sha256')
+        self.beginning_balance = beginning_balance
 
     def is_authenticated(self):
         return True
@@ -179,8 +181,5 @@ class AllUserData(db.Model):
             return '<AllUserData %r>' % self.records
         
 
-        #delete,
-        #balnce column
-        #add then send bask record to the db   im already sending the ID, so i can jus send back the whole record.
-        #Exception has occurred. _TypeError (type 'List<dynamic>' is not a subtype of type 'FutureOr<Map<String, dynamic>>') 
-            # fix above that occurs on startup
+        
+
