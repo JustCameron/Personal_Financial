@@ -145,6 +145,7 @@ class MyAppState extends ChangeNotifier {
   double needPercentage = 0.00;
   double savingsPercentage = 0.00;
 
+
   //Stuff For Jon
   double wantTotal = 0.00; // Keep track of total spent on wants - For Jon
   double needTotal = 0.00; // Keep track of total spent on needs - For Jon
@@ -481,10 +482,15 @@ class _LoginPageState extends State<LoginPage> {
 
                       appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
                       appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
-                      appState.expenseidList.add((id.toString()));
+                      appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+                      
+                      //CALCULATION: To change
+                      appState.balance -= cost; // subtract expense from balance
+                      appState.spent += cost; // add expense cost to spent
                       
                         //Different WANT/NEED Symbols
                         if (expenseType == "Want") {
+                          appState.wantTotal += cost; //To change
                           Padding(
                             padding: const EdgeInsets.only(left: 5),
                             child: appState.wantneedIcon = Icon(
@@ -494,6 +500,7 @@ class _LoginPageState extends State<LoginPage> {
                           );
                         
                         } else {
+                          appState.needTotal += cost;
                           Padding(
                             padding: const EdgeInsets.only(left: 5),
                             child: appState.wantneedIcon = Icon(
@@ -573,7 +580,10 @@ class _LoginPageState extends State<LoginPage> {
 
                       appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
                       appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
-                    
+
+                      //CALCULATION: To change
+                      appState.balance += monthlyEarning; // adds income to remaining balance
+                      appState.income += monthlyEarning; // add income value to income
                       
                       if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
                         Padding(
@@ -594,6 +604,10 @@ class _LoginPageState extends State<LoginPage> {
                         );
                       }
                       appState.incomeFreqList.add(appState.incomeFrequencyIcon);
+                      // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
+                      appState.wantPercentage = appState.wantTotal / appState.income;
+                      appState.needPercentage = appState.needTotal / appState.income;
+                      appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
                     }
 
                   });  
@@ -601,7 +615,7 @@ class _LoginPageState extends State<LoginPage> {
                     context,
                     MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
                   );
-                }, 
+                }, //OnPressedClosure
                 child: Text('Login')),
             ),
           ),
@@ -5685,3 +5699,5 @@ class DataConnection {
     }
   }
 }
+
+

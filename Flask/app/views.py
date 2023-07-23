@@ -213,7 +213,7 @@ def make_csv():
     table_data = db.session.query(AllUserData).all()
 
     # Define the CSV file path and name
-    csv_file_path = 'ReccomendationScripts\csvs\sql_to_.csv' #change this
+    csv_file_path = 'ReccomendationScripts\\csvs\\sql_to_.csv' #change this
     
 
     # Write the data to the CSV file
@@ -321,7 +321,7 @@ def compare(refnum,num):
 # This function scans the dataframe for users that meets the requirements of having within a 20% difference of income and
 # expense of the current user.
 #def recommend(vec2): #what it should be
-def recommend():
+def recommend_ratios():
     path= 'ReccomendationScripts\csvs\sql_to_.csv'
     df=pd.read_csv(path)
     df = df.dropna()
@@ -334,6 +334,7 @@ def recommend():
     user = df.tail(1)
     lendf= len(df)-20
     head=df.head(lendf)
+    
     refvec1=user 
     vec2=head
     
@@ -343,67 +344,107 @@ def recommend():
     for index,row in vec2.iterrows():
         if  compare(row["Monthly_Income"],int(Monthly_Income)) and compare(row["Monthly_Expense"],int(Monthly_Expense)) and row["Budget_Increase"]>0 :
             indx.append(index)
-    df_filtered=vec2.filter(items=indx,axis=0)
-    needs=int(df_filtered["Needs%"].mean())
-    wants=int(df_filtered["Wants%"].mean())
-    savings= 100 - (needs+wants)
-    return needs,wants,savings
+    if indx != []:
+        df_filtered=vec2.filter(items=indx,axis=0)
+        needs=int(df_filtered["Needs%"].mean())
+        wants=int(df_filtered["Wants%"].mean())
+        savings= 100 - (needs+wants)
+        return needs,wants,savings
+    else:
+        return (50.00,30.00,20.00)
 
 
 @app.route('/recommendation/report',methods=['GET']) 
 def recommendation():
+    global user_id #remove l8r
+    users=[]
     with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
         sql_script = file.read()
         with app.app_context():
-            usert= db.session.execute(text(sql_script)).fetchall()
-    if usert: 
-        #print(user)
-            
-        usertbl = [
-            {   
-                'acc_id': j.acc_id,
-                'month': j.month,
-                'current_balance': j.current_balance,
-                'monthly_income': j.monthly_income,
-                'monthly_expenses': j.monthly_expenses,
-                'wants': j.wants_percentage,
-                'needs': j.needs_percentage,
-                'savings': j.savings,
-                'increasedecrease': j.increasedecrease
+            usertbl= db.session.execute(text(sql_script)).fetchall()
+    if usertbl: 
+        print(usertbl)
+        for j in usertbl:  #This should run only once right?
+            beginningBalance=100000.00
+            mingoal=20000.00  #Month goals can be added into the table from goals table  
+            maxgoal=500000.00
+            #month needs to be changed.
+            #j.savings= (float(j.monthly_income) + float(beginningBalance)) - float(j.monthly_expenses)
+            #j.increasedecrease=13.00
 
-            }
-            for j in usert]
-        return jsonify(usertbl)
+            user_month_data = AllUserData(j.acc_id,j.month,j.month,beginningBalance,float(j.monthly_income),
+                                          float(j.monthly_expenses),float(j.current_balance),float(j.wants_percentage),
+                                          float(j.needs_percentage),float(j.savings),mingoal,maxgoal,float(j.increasedecrease))
+            #db.session.add(user_month_data) #uncomment
+            #db.session.commit() 
+
+            users = {   
+                        'acc_id': j.acc_id,
+                        'month': j.month, #format needs to change.
+                        'current_balance': float(j.current_balance),
+                        'monthly_income': float(j.monthly_income),
+                        'monthly_expenses': float(j.monthly_expenses),
+                        'wants': float(j.wants_percentage),
+                        'needs': float(j.needs_percentage),
+                        'savings': float(j.savings),
+                        'increasedecrease': float(j.increasedecrease)
+                    }
+            
+        #return jsonify(users)
 
     ans=None
     #create to add to all_user_data table
     #make_csv()
-    #ans=run_script()
+    #ans=run_script() #remove
 
-    ans = recommend()  #dis gonna change to a list from the user
+    ans = recommend_ratios()  #dis gonna change to a list from the user
     print("Recommendation Splits are as follows",ans)
 
     #DROP TABLE user_goals,all_user_data
-    recommendation_data = {
-        'wants': ans[0],
-        'needs': ans[1],
-        'savings': ans[2]
+    splits = {
+        'rwants': ans[1],
+        'rneeds': ans[0],
+        'rsavings': ans[2]
     }
+
+    send_to_rec_table = RecommendationReport(users['acc_id'],users['month'],users['wants'],users['needs'],users['savings'],splits['rwants'],splits['rneeds'],splits['rsavings'])
+    db.session.add(send_to_rec_table) #uncomment
+    db.session.commit() 
+
+
     # Return a JSON response with the recommendation data
-    return jsonify(recommendation_data)
+    return jsonify(splits)
+    
+    #We can have a section that would allow the user to pick their ratio. This would run the reccomend() function,
+        #with the percentages as the parameters (so we need to figure how to add the record from the function's param)
+        #SO the next function would be the result that would recomend the user what to cut.
+        #So the sql also needs to for a specific month. So have the reccomend function run for reach month.
 
-""" 
-with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
-        sql_script = file.read()
-        with app.app_context():
-            events = db.session.execute(text(sql_script)).fetchall()
-"""
 
-"""
-THINGS TO CHANGE:
-expense_list_sample to expense_list
-account_id to acc_id
-expense_type = 'wants' to expense_type = 'Want'
-expense_type = 'needs' to expense_type = 'Need'
-DATE_TRUNC('month', expense_date) AS month, to DATE_TRUNC('month', date) AS month, 
-"""
+@app.route('/splits',methods=['GET']) #get from db RecommendationReport
+def splits():
+    #time.sleep(2)
+    global user_id
+    recList = []
+
+    #expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
+    recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
+    print('populate user_id',user_id)
+    print(recSplits)
+    
+    if recSplits == []:
+        return []
+    for g in recSplits: 
+            recList.append({
+                'id': g.id,
+                'acc_id': g.acc_id,
+                'date': g.date,
+                'wants': g.wants,
+                'needs': g.needs,
+                'savings': g.savings,
+                'rwants': g.rwants,
+                'rneeds': g.rneeds,
+                'rsavings': g.rsavings
+                        })
+    return jsonify(splits=recList)
+    

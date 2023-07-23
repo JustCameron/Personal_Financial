@@ -22,3 +22,21 @@ if (value == 4){
  // Expense Button To Delete   //delete
 
  add 4 some how being the ID yzm
+
+
+THE SQL FILE
+ """ 
+with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
+        sql_script = file.read()
+        with app.app_context():
+            events = db.session.execute(text(sql_script)).fetchall()
+"""
+
+"""
+THINGS TO CHANGE:
+expense_list_sample to expense_list
+account_id to acc_id
+expense_type = 'wants' to expense_type = 'Want'
+expense_type = 'needs' to expense_type = 'Need'
+DATE_TRUNC('month', expense_date) AS month, to DATE_TRUNC('month', date) AS month, 
+"""

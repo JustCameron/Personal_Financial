@@ -97,12 +97,12 @@ class RecommendationReport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     acc_id = db.Column(db.Integer, db.ForeignKey('account.id'))
     date = db.Column(db.DateTime, nullable=False)  # Assuming the date format is 'mm/yyyy'
-    wants = db.Column(db.Integer, nullable=False)
-    needs = db.Column(db.Integer, nullable=False)
-    savings = db.Column(db.Integer, nullable=False)
-    rwants = db.Column(db.Integer, nullable=False)
-    rneeds = db.Column(db.Integer, nullable=False)
-    rsavings = db.Column(db.Integer, nullable=False) #create the init function
+    wants = db.Column(db.Numeric(10, 2))
+    needs = db.Column(db.Numeric(10, 2))
+    savings = db.Column(db.Numeric(10, 2))
+    rwants = db.Column(db.Numeric(10, 2))
+    rneeds = db.Column(db.Numeric(10, 2))
+    rsavings = db.Column(db.Numeric(10, 2)) #create the init function
 
     def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings):
         self.acc_id = acc_id
