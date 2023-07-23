@@ -68,6 +68,7 @@ class MyAppState extends ChangeNotifier {
   var expenseFreqList = [];
   var incomeFreqList = [];
   var expenseidList = [];
+  var incomeidList = [];
   List<String> creditCardList = <String>['Mastercard', 'Scotia', 'Sagicor', 'Paypal'];
   List<String> marriedOrSingleList = <String>['Single', 'Married'];
   List<String> wantORneed = <String>['Want', 'Need'];
@@ -96,6 +97,7 @@ class MyAppState extends ChangeNotifier {
   String expenseName = "";
   String incomeName = "";
   String expenseID = ""; ////Yassso
+  String incomeID = "";
   double expenseCost = 0.00;
   double incomeValue = 0.00;
   String fullexpense = "";
@@ -146,6 +148,10 @@ class MyAppState extends ChangeNotifier {
   double needPercentage = 0.00;
   double savingsPercentage = 0.00;
 
+  double recommendedWantsPercentage= 0.00;
+  double recommendedNeedsPercentage = 0.00;
+  double recommendedSavingsPercentage = 0.00;
+
 
   //Stuff For Jon
   double wantTotal = 0.00; // Keep track of total spent on wants - For Jon
@@ -167,8 +173,6 @@ class MyAppState extends ChangeNotifier {
     balance -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // minus removed income from balance [replaceAll is used here to only get the numbers from the String]
     income -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // subtract removed income [replaceAll is used here to only get the numbers from the String]
     //print (double.parse(exp.replaceAll(RegExp(r'[^0-9,.]'),'')));
-    //final sendIncomeChannel = {'table': IncomeChannel record_id: };           
-    //final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('remove', sendIncomeChannel);
     notifyListeners();
   }
 
@@ -486,6 +490,7 @@ class _LoginPageState extends State<LoginPage> {
                       appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
                       
                       //CALCULATION: To change
+                      //Create colunmn for balance and add value here. WYUEWI
                       appState.balance -= cost; // subtract expense from balance
                       appState.spent += cost; // add expense cost to spent
                       
@@ -581,6 +586,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
                       appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
+                      appState.incomeidList.add((id.toString()));
 
                       //CALCULATION: To change
                       appState.balance += monthlyEarning; // adds income to remaining balance
@@ -611,7 +617,40 @@ class _LoginPageState extends State<LoginPage> {
                       appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
                     }
 
-                  });  
+                  });  //end first populate
+
+                  double bwants = 0.00;
+                  double bneeds = 0.00; 
+                  double bsavings = 0.00;
+                  double rwants = 0.00;
+                  double rneeds = 0.00;
+                  double rsavings = 0.00;
+                  double increasedecrease = 0.00; 
+                  var currDate = '';
+                  
+                  var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
+                  recPopulate.then((data){
+                    var splitList = data['splits'];
+                    //print('Message: $splitList');
+                    for (var splits in splitList) {
+                    
+                      bwants = double.parse(splits['wants']); 
+                      bneeds = double.parse(splits['needs']); 
+                      bsavings = double.parse(splits['savings']); 
+                      rwants = double.parse(splits['rwants']); 
+                      rneeds = double.parse(splits['rneeds']); 
+                      rsavings = double.parse(splits['rsavings']);
+                      increasedecrease = double.parse(splits['increasedecrease']); 
+                      currDate = splits['date']; 
+
+                      print('Splits in loop: $rwants');
+                      appState.recommendedWantsPercentage = rwants;
+                      appState.recommendedNeedsPercentage = rneeds;
+                      appState.recommendedSavingsPercentage = rsavings;
+                    }});
+
+                  print('Splits: ${appState.recommendedSavingsPercentage}');
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
@@ -1306,7 +1345,7 @@ class _DashboardPageState extends State<DashboardPage> {
       );
 
     var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList,appState.expenseidList]); //Added a list
-    var incomeZippedLists = IterableZip([appState.incomeList, appState.incomeFreqList]);
+    var incomeZippedLists = IterableZip([appState.incomeList, appState.incomeFreqList,appState.incomeidList]);
 
     final addExpenseNameController = TextEditingController();
     final addExpenseCostController = TextEditingController();
@@ -1661,6 +1700,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                                         onPressed: () {
                                                           setState(() {
                                                             appState.removeExpense(tuple.first);
+                                                            final removeExpenseFromID = {'record_id': tuple.elementAt(4),'table': 'ExpenseList'};           
+                                                            final removedExpensefromID = MyApp.of(context).flaskConnect.sendData('remove', removeExpenseFromID);
                                                             //print(appState.expenseList);
                                                           });
                                                         },
@@ -2464,8 +2505,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                                         onPressed: () {
                                                           setState(() {
                                                             appState.removeIncome(tuple.first);
-                                                            //final removeExpenseFromID = {'id': tuple.elementAt(4) };           
-                                                            //final removedExpensefromID = MyApp.of(context).flaskConnect.sendData('remove', removeExpenseFromID);
+                                                            final removeIncomeFromID = {'record_id': tuple.elementAt(2),'table': 'IncomeChannel'};           
+                                                            final removedIncomefromID = MyApp.of(context).flaskConnect.sendData('remove', removeIncomeFromID);
                                                             //print(appState.expenseList);
                                                           });
                                                         },
@@ -2837,6 +2878,14 @@ class _DashboardPageState extends State<DashboardPage> {
                                 // SENT INCOME TO DB/BACKEND
                                 final sendIncomeChannel = {'name': appState.incomeName.toString(), 'monthly_earning': appState.incomeValue.toStringAsFixed(2),'frequency': appState.incomeFreq.toString()};           
                                 final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('incomeChannel/add', sendIncomeChannel);
+
+                                sentIncomeChannel.then((data){ var id = data['message']; 
+                                  print("The ID sent $id");
+                                  appState.incomeID = id.toString();
+                                  appState.incomeidList.add((appState.incomeID));
+
+                                });
+                              
                               });
                             }, 
                             icon: Icon(Icons.add),
@@ -5143,10 +5192,14 @@ class _BudgetPageState extends State<BudgetPage> {
     double goalAmount = appState.savingsgoal;
 
     // Recommended Percentages [not done]
-    double recommendedWantsPercentage = 0.0;
-    double recommendedNeedsPercentage = 0.0;
-    double recommendedSavingsPercentage = 0.0;
+    // double recommendedWantsPercentage = 0.00;
+    // double recommendedNeedsPercentage = 0.00;
+    // double recommendedSavingsPercentage = 0.00;
+
+    //place this @ function maybe? cuz it runs in the for loop not outside it
+    //is the solution adding it to a list in appstate and searching for it here?
     
+    //idr dis atall
     var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList]);
 
     // Get Month:
@@ -5492,7 +5545,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                 fontFamily: "Roboto"
                               ),
                             )),
-                            Expanded(flex: 4,child: Text("Wants %: $recommendedWantsPercentage",
+                            Expanded(flex: 4,child: Text("Wants %: ${appState.recommendedWantsPercentage}",
                                 style: TextStyle(
                                 fontFamily: "Roboto"
                                 )
@@ -5507,7 +5560,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                 fontFamily: "Roboto"
                                 )
                             )),
-                            Expanded(flex: 4,child: Text("Needs %: $recommendedNeedsPercentage",
+                            Expanded(flex: 4,child: Text("Needs %: ${appState.recommendedNeedsPercentage}",
                                 style: TextStyle(
                                 fontFamily: "Roboto"
                                 )
@@ -5522,7 +5575,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                 fontFamily: "Roboto"
                                 )
                             )),
-                            Expanded(flex: 4,child: Text("Savings %: $recommendedSavingsPercentage",
+                            Expanded(flex: 4,child: Text("Savings %: ${appState.recommendedSavingsPercentage}",
                                 style: TextStyle(
                                 fontFamily: "Roboto"
                                 )
@@ -5955,7 +6008,7 @@ class DataConnection {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      //throw Exception('Failed to fetch data');
+      throw Exception('Failed to fetch data');
       print('Failed to fetch data: ${response.statusCode}');
       return {}; // or return an appropriate default value based on your use case
     }
@@ -5970,7 +6023,7 @@ class DataConnection {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      //throw Exception('Failed to send data'); 
+      throw Exception('Failed to send data'); 
       print('Failed to fetch data: ${response.statusCode}');
       return {}; // or return an appropriate default value based on your use case
     }

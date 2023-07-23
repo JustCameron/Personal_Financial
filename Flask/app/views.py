@@ -193,7 +193,13 @@ def remove():
         
         table = request.form.get('table') #IncomeChannel #ExpenseList
         recordID = request.form.get('record_id')
-        record = db.session.execute(db.select(table).filter_by(id=recordID)).scalar()
+
+        print(table)
+        print(recordID)
+
+        table_obj = globals()[table]
+        print(table_obj)
+        record = db.session.execute(db.select(table_obj).filter_by(id=recordID)).scalar()
         #record = db.session.execute(db.select(table).filter(and_(id.recordID == value1, table.column2 == value2))).scalar()
     
         db.session.delete(record)
@@ -321,7 +327,9 @@ def compare(refnum,num):
 # This function scans the dataframe for users that meets the requirements of having within a 20% difference of income and
 # expense of the current user.
 #def recommend(vec2): #what it should be
-def recommend_ratios():
+
+def recommend_ratios(users):  #pass a dictionary there
+
     path= 'ReccomendationScripts\csvs\sql_to_.csv'
     df=pd.read_csv(path)
     df = df.dropna()
@@ -340,7 +348,7 @@ def recommend_ratios():
     
     indx=[]
     Monthly_Income=refvec1["Monthly_Income"] # user monthly income
-    Monthly_Expense=refvec1["Monthly_Income"] #user monthly expense
+    Monthly_Expense=refvec1["Monthly_Expenses"] #user monthly expense
     for index,row in vec2.iterrows():
         if  compare(row["Monthly_Income"],int(Monthly_Income)) and compare(row["Monthly_Expense"],int(Monthly_Expense)) and row["Budget_Increase"]>0 :
             indx.append(index)
@@ -407,7 +415,7 @@ def recommendation():
         'rsavings': ans[2]
     }
 
-    send_to_rec_table = RecommendationReport(users['acc_id'],users['month'],users['wants'],users['needs'],users['savings'],splits['rwants'],splits['rneeds'],splits['rsavings'])
+    send_to_rec_table = RecommendationReport(users['acc_id'],users['month'],users['wants'],users['needs'],users['savings'],splits['rwants'],splits['rneeds'],splits['rsavings'],users['increasedecrease'])
     db.session.add(send_to_rec_table) #uncomment
     db.session.commit() 
 
@@ -429,22 +437,26 @@ def splits():
 
     #expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
     recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
+    #expenses = db.session.query(ExpenseList).filter(ExpenseList.acc_id == user_id).all()
     print('populate user_id',user_id)
     print(recSplits)
     
     if recSplits == []:
         return []
-    for g in recSplits: 
+    for rec in recSplits: 
             recList.append({
-                'id': g.id,
-                'acc_id': g.acc_id,
-                'date': g.date,
-                'wants': g.wants,
-                'needs': g.needs,
-                'savings': g.savings,
-                'rwants': g.rwants,
-                'rneeds': g.rneeds,
-                'rsavings': g.rsavings
+           'id': rec.id,
+            'acc_id': rec.acc_id,
+            'date': rec.date,
+            'wants': f'{round(float(rec.wants), 2)}', 
+            'needs': f'{round(float(rec.needs), 2)}',  
+            'savings': f'{round(float(rec.savings), 2)}', 
+            'rwants': f'{round(float(rec.rwants), 2)}',  
+            'rneeds': f'{round(float(rec.rneeds), 2)}', 
+            'rsavings': f'{round(float(rec.rsavings), 2)}',  
+            # 'increasedecrease': f'{round(float(rec.increasedecrease), 2)}', #add values to table first. #and ask len do done tbl somehow
+            'increasedecrease': '20.00'
                         })
+            print(recList)
     return jsonify(splits=recList)
     

@@ -31,6 +31,8 @@ class Account(db.Model):
 
     def __repr__(self):
         return '<Account %r>' % self.email
+    
+    #create goals based on one in lin code.
 
 
 class ExpenseList(db.Model):
@@ -103,8 +105,11 @@ class RecommendationReport(db.Model):
     rwants = db.Column(db.Numeric(10, 2))
     rneeds = db.Column(db.Numeric(10, 2))
     rsavings = db.Column(db.Numeric(10, 2)) #create the init function
+    increasedecrease = db.Column(db.Numeric(10, 2)) 
+    #the current balance
+    
 
-    def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings):
+    def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings,increasedecrease):
         self.acc_id = acc_id
         self.date = date
         self.wants = wants
@@ -113,6 +118,7 @@ class RecommendationReport(db.Model):
         self.rwants = rwants
         self.rneeds = rneeds
         self.rsavings = rsavings
+        self.increasedecrease = increasedecrease
 
     def __repr__(self):
         return '<RecommendationReport %r>' % self.id
@@ -171,3 +177,10 @@ class AllUserData(db.Model):
 
         def __repr__(self):
             return '<AllUserData %r>' % self.records
+        
+
+        #delete,
+        #balnce column
+        #add then send bask record to the db   im already sending the ID, so i can jus send back the whole record.
+        #Exception has occurred. _TypeError (type 'List<dynamic>' is not a subtype of type 'FutureOr<Map<String, dynamic>>') 
+            # fix above that occurs on startup
