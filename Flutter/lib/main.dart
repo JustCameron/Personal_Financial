@@ -5,10 +5,11 @@ import 'dart:developer';
 import 'dart:math';
 import 'dart:ui';
 import 'package:collection/collection.dart';
-import 'package:pie_chart/pie_chart.dart';
+import 'package:pie_chart/pie_chart.dart' as pc;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 //for back end
 import 'package:http/http.dart' as http;
@@ -5133,71 +5134,127 @@ class _BudgetPageState extends State<BudgetPage> {
     //String piechartText = "Income \n ${appState.income + appState.beginbalance}"; // Income = Monthly Income + Initial Balance. Shows in chart center
     String piechartText = "Total Income \n ${appState.income} \n\n Gross Balance \n ${appState.beginbalance+appState.income}"; // Income = Income, Gross Balance = Income + Beginning Balance
 
-    // Current Percentages
-    print(appState.wantTotal);
-    print(appState.spent);
+    // Current Wants/Needs/Savings Percentages
     var wantsPercentage = (appState.wantPercentage*100).toStringAsFixed(2); //toStringAsFixed is pretty much round()
     var needsPercentage = (appState.needPercentage*100).toStringAsFixed(2);
     var savingsPercentage = (appState.savingsPercentage).toStringAsFixed(2);
+
+    // Goal Stuff [rework in future]
+    double goalAmount = appState.savingsgoal;
 
     // Recommended Percentages [not done]
     double recommendedWantsPercentage = 0.0;
     double recommendedNeedsPercentage = 0.0;
     double recommendedSavingsPercentage = 0.0;
     
+    var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList]);
 
     // Get Month:
     DateTime currentDate = DateTime.now(); //Get Current Date
     var monthNumber = "${currentDate.month}"; //Get Current Month (as integer)
     var currentMonth;
     var nextMonth;
+  
+    double currentMonthNumber = 0.0;
+    double nextMonthNumber = 0.0;
+    double prevMonthNumber = 0.0;
+    double recommendationMonthNumber = 0.0;
+
     if (int.parse(monthNumber) == 1){
       currentMonth = "January";
       nextMonth = "February";
+      currentMonthNumber = 1;
+      nextMonthNumber = 2;
+      recommendationMonthNumber = 3;
+      prevMonthNumber = 12;
     }
     else if(int.parse(monthNumber) == 2){
       currentMonth = "February";
       nextMonth = "March";
+      currentMonthNumber = 2;
+      nextMonthNumber = 3;
+      recommendationMonthNumber = 4;
+      prevMonthNumber = 1;
     }
     else if(int.parse(monthNumber) == 3){
       currentMonth = "March";
       nextMonth = "April";
+      currentMonthNumber = 3;
+      nextMonthNumber = 4;
+      recommendationMonthNumber = 5;
+      prevMonthNumber = 2;
     }
     else if(int.parse(monthNumber) == 4){
       currentMonth = "April";
       nextMonth = "May";
+      currentMonthNumber = 4;
+      nextMonthNumber = 5;
+      recommendationMonthNumber = 6;
+      prevMonthNumber = 3;
     }
     else if(int.parse(monthNumber) == 5){
       currentMonth = "May";
       nextMonth = "June";
+      currentMonthNumber = 5;
+      nextMonthNumber = 6;
+      recommendationMonthNumber = 7;
+      prevMonthNumber = 4;
     }
     else if(int.parse(monthNumber) == 6){
       currentMonth = "June";
       nextMonth = "July";
+      currentMonthNumber = 6;
+      nextMonthNumber = 7;
+      recommendationMonthNumber = 8;
+      prevMonthNumber = 5;
     }
     else if(int.parse(monthNumber) == 7){
       currentMonth = "July";
       nextMonth = "August";
+      currentMonthNumber = 7;
+      nextMonthNumber = 8;
+      recommendationMonthNumber = 9;
+      prevMonthNumber = 6;
     }
     else if(int.parse(monthNumber) == 8){
       currentMonth = "August";
       nextMonth = "September";
+      currentMonthNumber = 8;
+      nextMonthNumber = 9;
+      recommendationMonthNumber = 10;
+      prevMonthNumber = 7;
     }
     else if(int.parse(monthNumber) == 9){
       currentMonth = "September";
       nextMonth = "October";
+      currentMonthNumber = 9;
+      nextMonthNumber = 10;
+      recommendationMonthNumber = 11;
+      prevMonthNumber = 8;
     }
     else if(int.parse(monthNumber) == 10){
       currentMonth = "October";
       nextMonth = "November";
+      currentMonthNumber = 10;
+      nextMonthNumber = 11;
+      recommendationMonthNumber = 12;
+      prevMonthNumber = 9;
     }
     else if(int.parse(monthNumber) == 11){
       currentMonth = "November";
       nextMonth = "December";
+      currentMonthNumber = 11;
+      nextMonthNumber = 12;
+      recommendationMonthNumber = 1;
+      prevMonthNumber = 10;
     }
     else if(int.parse(monthNumber) == 12){
       currentMonth = "December";
       nextMonth = "January";
+      currentMonthNumber = 12;
+      nextMonthNumber = 1;
+      recommendationMonthNumber = 2;
+      prevMonthNumber = 11;
     }
 
 
@@ -5290,7 +5347,57 @@ class _BudgetPageState extends State<BudgetPage> {
       
             Divider(), //Horizontal Line
       
-            //Everything below Budget Heading
+            // EVERYTHING BELOW THE LINE
+
+            // GOALS
+            if(appState.balance >= appState.savingsgoal) // If Goal is reached:
+              Align(alignment: Alignment.center, 
+              child: Padding(
+                padding: const EdgeInsets.only(right: 70),
+                child: Container(
+                  width: 150,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    border: Border.all(width: 1, color: Colors.black.withOpacity(0)),
+                    borderRadius: BorderRadius.all(Radius.circular(5)),
+                    color: Colors.lightGreen.withOpacity(0.5),
+                  ),
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Text("Goal: $goalAmount",
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 18, 139, 22),
+                    ),
+                    ),
+                  ),
+                ),
+              )
+              ),
+
+            if(appState.balance < appState.savingsgoal) // If Goal is not reached:
+              Align(alignment: Alignment.center, 
+              child: Padding(
+                padding: const EdgeInsets.only(right: 70),
+                child: Container(
+                  width: 150,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    border: Border.all(width: 1, color: Colors.black.withOpacity(0)),
+                    borderRadius: BorderRadius.all(Radius.circular(5)),
+                    color: Colors.redAccent.withOpacity(0.5),
+                  ),
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Text("Goal: $goalAmount",
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 121, 19, 11),
+                    ),
+                    ),
+                  ),
+                ),
+              )
+              ),
+  
             Row(
               children: [
                 Padding(
@@ -5300,23 +5407,23 @@ class _BudgetPageState extends State<BudgetPage> {
                     top: 30,
                     bottom: 15,
                   ),
-                  child: PieChart(  // PIE CHART
+                  child: pc.PieChart(  // PIE CHART
                     dataMap: dataMap,
                     initialAngleInDegree: 180, //Change this to rotate the chart
-                    chartType: ChartType.ring, // Set the pie chart type to be a ring, use 'disc' otherwise
+                    chartType: pc.ChartType.ring, // Set the pie chart type to be a ring, use 'disc' otherwise
                     chartRadius: MediaQuery.of(context).size.width/6, // Size of Pie Chart
                     centerText: piechartText, //Sets the text in the center of chart
                     chartLegendSpacing: 32, //Distance of legend from Pie Chart
                     animationDuration: Duration(milliseconds: 1200), //Length of Pie Chart animation
                     colorList: piechartcolours, //Set pie chart colours, variable initialized earlier
-                    legendOptions: LegendOptions(
+                    legendOptions: pc.LegendOptions(
                       legendShape: BoxShape.circle, //Makes the legends boxes circles
                       legendTextStyle: TextStyle(
                         fontFamily: 'Nato Sans',
                         fontWeight: FontWeight.bold,
                       )
                     ),
-                    chartValuesOptions: ChartValuesOptions( //Configure values in chart
+                    chartValuesOptions: pc.ChartValuesOptions( //Configure values in chart
                       showChartValues: true,
                       showChartValuesOutside: true,
                       showChartValuesInPercentage: true,
@@ -5334,7 +5441,7 @@ class _BudgetPageState extends State<BudgetPage> {
 
                 // RECOMMENDATIONS AREA
                 Padding(
-                  padding: const EdgeInsets.only(left:210),
+                  padding: const EdgeInsets.only(left:196),
                   child: Container(
                     height: 200,
                     width: 500,
@@ -5423,11 +5530,152 @@ class _BudgetPageState extends State<BudgetPage> {
                           ],
                         ),
 
+                        // HELP BUTTON
+                        TextButton( // Expense Button To Delete
+                          onPressed: () {
+                            setState(() {
+                              // Should bring up table with expenses recommended to remove
+                            });
+                          },
+                          // The icon 
+                          child: Icon(Icons.help,
+                            size: 22,
+                            color: Colors.black,
+                          ),
+                          ),
                       ],
                     )
                       ),
                 )
 
+              ],
+            ),
+            SizedBox(height: 20,), // Bit of space between chart and line graphs
+
+            // CURRENT TRAJECTORY & OPTIMAL TRAJECTORY LINE GRAPH HEADINGS
+            Row(
+              children: [
+                //CURRENT TRAJECTORY
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 170,bottom: 10),
+                    child: Text("Current Trajectory",
+                      style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: "Nato Sans"
+                                    ),
+                    ),
+                  )
+                  ),
+                //OPTIMAL TRAJECTORY
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 150,bottom: 10),
+                      child: Text("Optimal Trajectory",
+                        style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: "Nato Sans"
+                                      ),
+                      ),
+                    )
+                
+                    ),
+                ),
+              ],
+            ),
+            // ROW WITH LINE GRAPHS
+            Row(
+              children: [
+                // CURRENT TRAJECTORY LINE GRAPH
+                Container(
+                  width: 500,
+                  height: 200,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: FlGridData(drawHorizontalLine: true, drawVerticalLine: true, horizontalInterval: (appState.balance+1000)/5), // Grid Settings
+                      lineTouchData: LineTouchData( // Background color for when you hover a data point
+                        touchTooltipData: LineTouchTooltipData(
+                          tooltipBgColor: Colors.white10
+                        )
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        leftTitles: AxisTitles(sideTitles: SideTitles(reservedSize: 60, showTitles: true, interval: (appState.balance+1000)/5)),
+                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(axisNameSize: 16, axisNameWidget: Text("Months"), sideTitles: SideTitles(reservedSize: 24, showTitles: true, interval: 1)) // Interval - Range between each data point E.g. 6-7-8-9 if interval = 1
+
+                        ),
+                      borderData: FlBorderData(show: false), // Border line
+                      minX: prevMonthNumber,
+                      maxX: 12,
+                      // maximum Y value should be 20% greater than projected variable
+                      maxY: (appState.balance+1000)+(appState.balance+1000)*0.20, //REPLACE WITH PROJECTED VARIABLES WHEN YOU CAN
+                      lineBarsData: [
+                        LineChartBarData(
+                          color: Colors.deepPurple,
+                          spots:[ // it's (x, y)
+                            FlSpot(prevMonthNumber,0), // Start
+                            FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance
+                            FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
+                            FlSpot(recommendationMonthNumber, appState.balance+1000), // REPLACE WITH AVERAGE OF THEIR INCREASE TO GET PROJECTED BALANCE 
+                            //It should look smthn like this once we have an 'increase' variable:
+                            // FlSpot(recommendationMonthNumber, appState.balance*appState.increasePercentage),
+                          ]
+                        )
+                      ]
+                  )),
+                ),
+
+
+                // OPTIMAL TRAJECTORY LINE GRAPH
+                Padding(
+                  padding: const EdgeInsets.only(left: 80),
+                  child: Container(
+                    width: 500,
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        gridData: FlGridData(drawHorizontalLine: true, drawVerticalLine: true, horizontalInterval: (appState.balance+5000)/5), // Grid Settings
+                        lineTouchData: LineTouchData( // Background color for when you hover a data point
+                          touchTooltipData: LineTouchTooltipData(
+                            tooltipBgColor: Colors.white10
+                          )
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          leftTitles: AxisTitles(sideTitles: SideTitles(reservedSize: 60, showTitles: true, interval: (appState.balance+5000)/5)), // CHANGE THIS WITH ACTUAL PROJECTED VARIABLE
+                          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          bottomTitles: AxisTitles(axisNameSize: 16, axisNameWidget: Text("Months"), sideTitles: SideTitles(reservedSize: 24, showTitles: true, interval: 1)) // Interval - Range between each data point E.g. 6-7-8-9 if interval = 1
+                
+                          ),
+                        borderData: FlBorderData(show: false), // Border line
+                        minX: prevMonthNumber,
+                        maxX: 12,
+                        // maximum Y value should be 20% greater than projected variable
+                        maxY: (appState.balance+5000)+(appState.balance+5000)*0.20, //REPLACE WITH PROJECTED VARIABLES WHEN YOU CAN
+                        lineBarsData: [
+                          LineChartBarData(
+                            color: Colors.deepPurple,
+                            spots:[ // it's (x, y)
+                              FlSpot(prevMonthNumber,0), // Start
+                              FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance
+                              FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
+                              FlSpot(recommendationMonthNumber, appState.balance+5000), // REPLACE WITH AVERAGE OF THEIR INCREASE TO GET PROJECTED BALANCE 
+                              //It should look like this once recommendation works:
+                              // FlSpot(recommendationMonthNumber, appState.balance*appState.recommendedSavingsPercentage),
+                            ]
+                          )
+                        ]
+                    )),
+                  ),
+                )
               ],
             ),
       
@@ -5461,11 +5709,11 @@ class _BudgetPageState extends State<BudgetPage> {
                                   children: [
                                     Expanded(child: Padding( //Income for Current Month
                                       padding: const EdgeInsets.only(left: 10, top: 10),
-                                      child: Text('Expenses for $currentMonth'),
+                                      child: Text('Expenses for $currentMonth                   Cost'),
                                     )),
                                     Expanded(child: Padding( //Cost Text
-                                      padding: const EdgeInsets.only(left: 184, top: 10),
-                                      child: Text('Cost'),
+                                      padding: const EdgeInsets.only(left: 105, top: 10),
+                                      child: Text('W/N    Rank     Freq'),
                                     )),
                                   ],
                                 ),
@@ -5473,33 +5721,55 @@ class _BudgetPageState extends State<BudgetPage> {
                                 Divider(color: Colors.grey,),
       
                                 if (appState.expenseList != []) //Displays Expenses if list isn't emtpy
-                                  for (var expense in appState.expenseList) //Get all expenses
+                                  for (var tuple in zippedLists)//Get all expenses
+                                    // 1st = Expense, 2nd = Want/Need, 3rd = Rank, 4th = Frequency
                                     Row(
                                       children: [
                                         //  Money Icon and Expense Text Part
+                                          Expanded(
+                                            // flex: 2,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(left: 15),
+                                              child: Text(appState.getExpenseName(tuple.first), //Specifically gets the Name
+                                                style: TextStyle(
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         Padding(
                                           padding: const EdgeInsets.only(
-                                            left: 5,
+                                            left: 50,
                                           ),
                                           child: Icon(Icons.attach_money_rounded, 
-                                          //color: Colors.deepOrangeAccent,
+                                          color: Colors.black,
                                           ),
                                         ),
-                                        Text(expense.replaceAll(RegExp(r'[^A-Z,a-z]'),''),
-                                          style: TextStyle(
-                                            //color: Colors.deepOrangeAccent,
+                                        Expanded( //Specifically gets the Cost
+                                          // flex: 2,
+                                          child: Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(appState.getExpenseCost(tuple.first).toString(), //Specifically gets the Name
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                              ),
+                                            ),
                                           ),
                                         ),
       
-                                        //  COST OF EXPENSE
+                                        //  Icons
                                         Expanded( // Aligns it nicely to the right
                                           child: Align(
                                             alignment: Alignment.centerRight,
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(right: 30),
-                                              child: Text(expense.replaceAll(RegExp(r'[^0-9,.]'),'') // Expense Button To Delete
-                                                  
-                                                ),
+                                            child: Row(
+                                              children: [
+                                                // SizedBox(width: 10,),
+                                                tuple.elementAt(1), // Want/Need Icon
+                                                SizedBox(width: 25,),
+                                                tuple.elementAt(2), // Rank Icon
+                                                SizedBox(width: 28,),
+                                                tuple.elementAt(3), // Frequency Icon
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -5552,7 +5822,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                         child: Text('Income for $currentMonth'),
                                       )),
                                       Expanded(child: Padding( //Received Text
-                                        padding: const EdgeInsets.only(left: 160, top: 10, right: 10),
+                                        padding: const EdgeInsets.only(left: 132, top: 10, right: 10),
                                         child: Text('Received'),
                                       )),
                                     ],
@@ -5563,27 +5833,33 @@ class _BudgetPageState extends State<BudgetPage> {
                                     for (var income in appState.incomeList) //Get all income channels
                                       Row(
                                         children: [
-                                          //  Money Icon and Income Text Part
+                                          // Income Text
                                           Padding(
+                                            padding: const EdgeInsets.only(left: 15),
+                                            child: Text(income.replaceAll(RegExp(r'[^A-Z,a-z]'),''),
+                                              style: TextStyle(
+                                                //color: Colors.deepOrangeAccent,
+                                              ),
+                                            ),
+                                          ),
+                                          //  Money Icon
+                                          Expanded(
+                                            child: Padding(
                                             padding: const EdgeInsets.only(
-                                              left: 5,
+                                              left: 315,
                                             ),
                                             child: Icon(Icons.attach_money_rounded, 
                                             //color: Colors.deepOrangeAccent,
                                             ),
                                           ),
-                                          Text(income.replaceAll(RegExp(r'[^A-Z,a-z]'),''),
-                                            style: TextStyle(
-                                              //color: Colors.deepOrangeAccent,
-                                            ),
                                           ),
       
                                           //  INCOME EARNINGS
                                           Expanded( // Aligns it nicely to the right
                                             child: Align(
-                                              alignment: Alignment.centerRight,
+                                              alignment: Alignment.centerLeft,
                                               child: Padding(
-                                                padding: const EdgeInsets.only(right: 30),
+                                                padding: const EdgeInsets.only(left: 110,right: 30),
                                                 child: Text(income.replaceAll(RegExp(r'[^0-9,.]'),'') // INCOME Button To Delete
                                                     
                                                   ),
@@ -5645,6 +5921,7 @@ class _BudgetPageState extends State<BudgetPage> {
                 ),
               ],
             ),
+            SizedBox(height: 50,) // Extra space at the bottom to make scrolling better
           ],
         ),
       ),
