@@ -483,147 +483,150 @@ class _LoginPageState extends State<LoginPage> {
                   populate.then((data){
                     var expenseList = data['expense'];
                     print('ExpenseList: $expenseList');
-                    for (var expense in expenseList) {
-                      var id = expense['id'];
-                      var name = expense['name'];   
-                      var cost = num.parse(expense['cost']); 
-                      var tier = expense['tier'];               
-                      var expenseType = expense['expense_type']; 
-                      var frequency = expense['frequency']; 
-                      var date = expense['date']; 
+                    if (expenseList != []){
+                      for (var expense in expenseList) {
+                        var id = expense['id'];
+                        var name = expense['name'];   
+                        var cost = num.parse(expense['cost']); 
+                        var tier = expense['tier'];               
+                        var expenseType = expense['expense_type']; 
+                        var frequency = expense['frequency']; 
+                        var date = expense['date']; 
 
-                      appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
-                      appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
-                      appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
-                      
-                      //CALCULATION: To change
-                      //Create colunmn for balance and add value here. WYUEWI
-                      appState.balance -= cost; // subtract expense from balance
-                      appState.spent += cost; // add expense cost to spent
-                      
-                        //Different WANT/NEED Symbols
-                        if (expenseType == "Want") {
-                          appState.wantTotal += cost; //To change
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5),
-                            child: appState.wantneedIcon = Icon(
-                              Icons.store_mall_directory,
-                              color: Colors.blueAccent,
-                            ),
-                          );
+                        appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
+                        appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
+                        appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
                         
-                        } else {
-                          appState.needTotal += cost;
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5),
-                            child: appState.wantneedIcon = Icon(
-                              Icons.house,
-                              color: Colors.green
+                        //CALCULATION: To change
+                        //Create colunmn for balance and add value here. WYUEWI
+                        appState.balance -= cost; // subtract expense from balance
+                        appState.spent += cost; // add expense cost to spent
+                        
+                          //Different WANT/NEED Symbols
+                          if (expenseType == "Want") {
+                            appState.wantTotal += cost; //To change
+                            Padding(
+                              padding: const EdgeInsets.only(left: 5),
+                              child: appState.wantneedIcon = Icon(
+                                Icons.store_mall_directory,
+                                color: Colors.blueAccent,
                               ),
-                          );
-                        }
-                      appState.type = appState.wantneedIcon;
-                      appState.expenseTypeList.add(appState.type);
+                            );
+                          
+                          } else {
+                            appState.needTotal += cost;
+                            Padding(
+                              padding: const EdgeInsets.only(left: 5),
+                              child: appState.wantneedIcon = Icon(
+                                Icons.house,
+                                color: Colors.green
+                                ),
+                            );
+                          }
+                        appState.type = appState.wantneedIcon;
+                        appState.expenseTypeList.add(appState.type);
 
-                      //Different EXPENSE RANKINGS Symbols
-                      if (tier == "T1") {
-                        Padding(
-                          padding: const EdgeInsets.only(left: 5, top: 3),
-                          child: appState.rankIcon = Icon(
-                            Icons.looks_one,
-                            color: Color.fromARGB(255, 180, 166, 35),
-                          ),
-                        );                        
-                      } 
-                      else if (tier == "T2") {
+                        //Different EXPENSE RANKINGS Symbols
+                        if (tier == "T1") {
                           Padding(
-                          padding: const EdgeInsets.only(left: 5, top: 3),
-                          child: appState.rankIcon = Icon(
-                            Icons.looks_two,
-                            color: Colors.orange
+                            padding: const EdgeInsets.only(left: 5, top: 3),
+                            child: appState.rankIcon = Icon(
+                              Icons.looks_one,
+                              color: Color.fromARGB(255, 180, 166, 35),
                             ),
-                        );
-                      } 
-                      else if (tier == "T3") {
+                          );                        
+                        } 
+                        else if (tier == "T2") {
                             Padding(
                             padding: const EdgeInsets.only(left: 5, top: 3),
                             child: appState.rankIcon = Icon(
-                            Icons.looks_3,
-                            color: Colors.red
-                            ),
-                            );
-                      }
-                      appState.rankIcon = appState.rankIcon;
-                      appState.rankList.add(appState.rankIcon);
-
-                      if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
-                        Padding(
-                          padding: const EdgeInsets.only(left: 5, top: 3),
-                          child: appState.frequencyIcon = Icon(
-                            Icons.one_x_mobiledata_outlined,
-                            color: Colors.blueGrey,
-                          ),
-                        );
+                              Icons.looks_two,
+                              color: Colors.orange
+                              ),
+                          );
+                        } 
+                        else if (tier == "T3") {
+                              Padding(
+                              padding: const EdgeInsets.only(left: 5, top: 3),
+                              child: appState.rankIcon = Icon(
+                              Icons.looks_3,
+                              color: Colors.red
+                              ),
+                              );
                         }
-                      else{ 
-                        Padding(
-                          padding: const EdgeInsets.only(left: 5),
-                          child: appState.frequencyIcon = Icon(
-                            Icons.calendar_month,
-                            color: Colors.blueGrey
+                        appState.rankIcon = appState.rankIcon;
+                        appState.rankList.add(appState.rankIcon);
+
+                        if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5, top: 3),
+                            child: appState.frequencyIcon = Icon(
+                              Icons.one_x_mobiledata_outlined,
+                              color: Colors.blueGrey,
                             ),
-                        );
-                      }
-                      appState.expenseFreqList.add(appState.frequencyIcon);
+                          );
+                          }
+                        else{ 
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5),
+                            child: appState.frequencyIcon = Icon(
+                              Icons.calendar_month,
+                              color: Colors.blueGrey
+                              ),
+                          );
+                        }
+                        appState.expenseFreqList.add(appState.frequencyIcon);
 
 
 
 
                     }//end for 
+                  }//end if-empty 
                     
 
                     var incomeList = data['income'];
                     print('IncomeList: $incomeList');
-                    for (var income in incomeList) {
-                      var id = income['id'];
-                      var name = income['name'];   
-                      var monthlyEarning = num.parse(income['monthly_earning']); 
-                      var frequency = income['frequency']; 
-                      var date = income['date']; 
+                    if(incomeList != []){
+                      for (var income in incomeList) {
+                        var id = income['id'];
+                        var name = income['name'];   
+                        var monthlyEarning = num.parse(income['monthly_earning']); 
+                        var frequency = income['frequency']; 
+                        var date = income['date']; 
 
-                      appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
-                      appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
-                      appState.incomeidList.add((id.toString()));
+                        appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
+                        appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
+                        appState.incomeidList.add((id.toString()));
 
-                      //CALCULATION: To change
-                      appState.balance += monthlyEarning; // adds income to remaining balance
-                      appState.income += monthlyEarning; // add income value to income
-                      
-                      if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
-                        Padding(
-                          padding: const EdgeInsets.only(left: 5, top: 3),
-                          child: appState.incomeFrequencyIcon = Icon(
-                            Icons.one_x_mobiledata_outlined,
-                            color: Colors.blueGrey,
-                          ),
-                        );
-                        }
-                      else{ 
-                        Padding(
-                          padding: const EdgeInsets.only(left: 5),
-                          child: appState.incomeFrequencyIcon = Icon(
-                            Icons.calendar_month,
-                            color: Colors.blueGrey
+                        //CALCULATION: To change
+                        appState.balance += monthlyEarning; // adds income to remaining balance
+                        appState.income += monthlyEarning; // add income value to income
+                        
+                        if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5, top: 3),
+                            child: appState.incomeFrequencyIcon = Icon(
+                              Icons.one_x_mobiledata_outlined,
+                              color: Colors.blueGrey,
                             ),
-                        );
+                          );
+                          }
+                        else{ 
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5),
+                            child: appState.incomeFrequencyIcon = Icon(
+                              Icons.calendar_month,
+                              color: Colors.blueGrey
+                              ),
+                          );
+                        }
+                        appState.incomeFreqList.add(appState.incomeFrequencyIcon);
+                        // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
+                        appState.wantPercentage = appState.wantTotal / appState.income;
+                        appState.needPercentage = appState.needTotal / appState.income;
+                        appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
                       }
-                      appState.incomeFreqList.add(appState.incomeFrequencyIcon);
-                      // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
-                      appState.wantPercentage = appState.wantTotal / appState.income;
-                      appState.needPercentage = appState.needTotal / appState.income;
-                      appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
                     }
-
                   });  //end first populate
 
                   double bwants = 0.00;
@@ -639,22 +642,24 @@ class _LoginPageState extends State<LoginPage> {
                   recPopulate.then((data){
                     var splitList = data['splits'];
                     //print('Message: $splitList');
-                    for (var splits in splitList) {
-                    
-                      bwants = double.parse(splits['wants']); 
-                      bneeds = double.parse(splits['needs']); 
-                      bsavings = double.parse(splits['savings']); 
-                      rwants = double.parse(splits['rwants']); 
-                      rneeds = double.parse(splits['rneeds']); 
-                      rsavings = double.parse(splits['rsavings']);
-                      increasedecrease = double.parse(splits['increasedecrease']); 
-                      currDate = splits['date']; 
+                    if (splitList != []){
+                      for (var splits in splitList) {
+                      
+                        bwants = double.parse(splits['wants']); 
+                        bneeds = double.parse(splits['needs']); 
+                        bsavings = double.parse(splits['savings']); 
+                        rwants = double.parse(splits['rwants']); 
+                        rneeds = double.parse(splits['rneeds']); 
+                        rsavings = double.parse(splits['rsavings']);
+                        increasedecrease = double.parse(splits['increase_decrease']); 
+                        currDate = splits['date']; 
 
-                      print('Splits in loop: $rwants');
-                      appState.recommendedWantsPercentage = rwants;
-                      appState.recommendedNeedsPercentage = rneeds;
-                      appState.recommendedSavingsPercentage = rsavings;
-                    }});
+                        print('Splits in loop: $rwants');
+                        appState.recommendedWantsPercentage = rwants;
+                        appState.recommendedNeedsPercentage = rneeds;
+                        appState.recommendedSavingsPercentage = rsavings;
+                      }} //End for and if 
+                  });
 
                   print('Splits OutsideLoop: ${appState.recommendedSavingsPercentage}');
 
@@ -2309,8 +2314,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                   print("The ID sent $id");
                                   appState.expenseID = id.toString();
                                   appState.expenseidList.add((appState.expenseID));
-
                                 });
+
                                 // UPDATE ICONS
                                 appState.type = wantneedIcon;
                                 appState.expenseTypeList.add(appState.type);
@@ -2333,24 +2338,13 @@ class _DashboardPageState extends State<DashboardPage> {
                                 appState.balance -= appState.expenseCost; // subtract expense from balance
                                 appState.spent += appState.expenseCost; // add expense cost to spent
 
-                                ///SEND AND RECIEVE THE ID HERE FROM THE RESPONSE!!!
-                                
-
                                 // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income]
                                 appState.wantPercentage = appState.wantTotal / appState.income;
                                 appState.needPercentage = appState.needTotal / appState.income;
                                 appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
-                              
-                              
-                                
-                                
-                                
-
-                                // appState.expenseID = sentExpense.toString();
-                                // appState.expenseidList.add((appState.expenseID));
-                                // print("The ID sent ${appState.expenseID}");
                               });
-                            }, 
+                          
+                            }, //onpressed()
                             icon: Icon(Icons.add), // The plus icon
                             )
                         ),
@@ -3142,8 +3136,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                     onPressed: (){ //After clicking Login
                       // ADDS CREDENTIALS TO DB; SENDS TO FLASK
-                      final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
-                      final sentCredentials= MyApp.of(context).flaskConnect.sendData('signup', sendCredentials);
+                        //final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
+                        //final sentCredentials= MyApp.of(context).flaskConnect.sendData('signup', sendCredentials);
                       //what if the user already in deh/incorrect format?
                       Navigator.push(
                         context,

@@ -39,4 +39,5 @@ account_id to acc_id
 expense_type = 'wants' to expense_type = 'Want'
 expense_type = 'needs' to expense_type = 'Need'
 DATE_TRUNC('month', expense_date) AS month, to DATE_TRUNC('month', date) AS month, 
+account.start_balance, to account.beginning_balance,
 """

@@ -9,6 +9,7 @@ class Account(db.Model):
     email = db.Column(db.String(255),nullable=False)
     password = db.Column(db.String(255),nullable=False) #add beginning balance here.
     beginning_balance = db.Column(db.Numeric(10, 2))
+    #signup_date =db.Column(db.DateTime) # add so that for increase of 0.00 in first month is known.
 
     def __init__(self, email, password, beginning_balance):
         self.email = email
@@ -107,11 +108,11 @@ class RecommendationReport(db.Model):
     rwants = db.Column(db.Numeric(10, 2))
     rneeds = db.Column(db.Numeric(10, 2))
     rsavings = db.Column(db.Numeric(10, 2)) #create the init function
-    increasedecrease = db.Column(db.Numeric(10, 2)) 
+    increase_decrease = db.Column(db.Numeric(10, 2)) 
     #the current balance
     
 
-    def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings,increasedecrease):
+    def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings,increase_decrease):
         self.acc_id = acc_id
         self.date = date
         self.wants = wants
@@ -120,66 +121,82 @@ class RecommendationReport(db.Model):
         self.rwants = rwants
         self.rneeds = rneeds
         self.rsavings = rsavings
-        self.increasedecrease = increasedecrease
+        self.increase_decrease = increase_decrease
 
     def __repr__(self):
         return '<RecommendationReport %r>' % self.id
 
 
-class AllUserData(db.Model):
-        # __tablename__ = 'all_user_data'
-        # records = db.Column(db.Integer, primary_key=True)
-        # #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
-        # acc_id = db.Column(db.Integer,nullable=False)
-        # start_date = db.Column(db.DateTime,nullable=False)
-        # curr_date = db.Column(db.DateTime)
-        # beginning_balance = db.Column(db.Numeric(15, 2))
-        # monthly_income = db.Column(db.Numeric(15, 2))
-        # monthly_expense = db.Column(db.Numeric(15, 2),nullable=False)
-        # current_balance = db.Column(db.Numeric(15, 2))
-        # wants_percent = db.Column(db.Numeric(5, 2),nullable=False)
-        # needs_percent = db.Column(db.Numeric(5, 2),nullable=False)
-        # savings_percent = db.Column(db.Numeric(5, 2),nullable=False)
-        # min_goal = db.Column(db.Numeric(10, 2))
-        # max_goal = db.Column(db.Numeric(10, 2))
-        # budget_increase = db.Column(db.Numeric(10, 2))
+class AllUsersData(db.Model): #used for demo
+    # __tablename__ = 'all_user_data'
+    # records = db.Column(db.Integer, primary_key=True)
+    # #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
+    # acc_id = db.Column(db.Integer,nullable=False)
+    # start_date = db.Column(db.DateTime,nullable=False)
+    # curr_date = db.Column(db.DateTime)
+    # beginning_balance = db.Column(db.Numeric(15, 2))
+    # monthly_income = db.Column(db.Numeric(15, 2))
+    # monthly_expense = db.Column(db.Numeric(15, 2),nullable=False)
+    # current_balance = db.Column(db.Numeric(15, 2))
+    # wants_percent = db.Column(db.Numeric(5, 2),nullable=False)
+    # needs_percent = db.Column(db.Numeric(5, 2),nullable=False)
+    # savings_percent = db.Column(db.Numeric(5, 2),nullable=False)
+    # min_goal = db.Column(db.Numeric(10, 2))
+    # max_goal = db.Column(db.Numeric(10, 2))
+    # budget_increase = db.Column(db.Numeric(10, 2))
 
-        __tablename__ = 'all_user_data'
-        records = db.Column(db.Integer, primary_key=True)
-        #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
-        acc_id = db.Column(db.Integer)
-        start_date = db.Column(db.DateTime)
-        curr_date = db.Column(db.DateTime)
-        beginning_balance = db.Column(db.Numeric(15, 2))
-        monthly_income = db.Column(db.Numeric(15, 2))
-        monthly_expense = db.Column(db.Numeric(15, 2))
-        current_balance = db.Column(db.Numeric(15, 2))
-        wants_percent = db.Column(db.Numeric(5, 2))
-        needs_percent = db.Column(db.Numeric(5, 2))
-        savings_percent = db.Column(db.Numeric(5, 2))
-        min_goal = db.Column(db.Numeric(10, 2))
-        max_goal = db.Column(db.Numeric(10, 2))
-        budget_increase = db.Column(db.Numeric(10, 2))
+    __tablename__ = 'all_users_data'
+    records = db.Column(db.Integer, primary_key=True)
+    #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
+    acc_id = db.Column(db.Integer)  
+    month = db.Column(db.DateTime)
+    beginning_balance = db.Column(db.Numeric(15, 2))
+    monthly_income = db.Column(db.Numeric(15, 2))
+    monthly_expense = db.Column(db.Numeric(15, 2))
+    current_balance = db.Column(db.Numeric(15, 2))
+    wants_percent = db.Column(db.Numeric(5, 2))
+    needs_percent = db.Column(db.Numeric(5, 2))
+    savings_percent = db.Column(db.Numeric(5, 2))
+    min_goal = db.Column(db.Numeric(10, 2))
+    max_goal = db.Column(db.Numeric(10, 2))
+    increase_decrease = db.Column(db.Numeric(10, 2))
 
-        def __init__(self, acc_id, start_date, curr_date, beginning_balance, monthly_income, monthly_expense,
-                 current_balance, wants_percent, needs_percent, savings_percent, min_goal, max_goal, budget_increase):
-            self.acc_id = acc_id
-            self.start_date = start_date
-            self.curr_date = curr_date
-            self.beginning_balance = beginning_balance
-            self.monthly_income = monthly_income
-            self.monthly_expense = monthly_expense
-            self.current_balance = current_balance
-            self.wants_percent = wants_percent
-            self.needs_percent = needs_percent
-            self.savings_percent = savings_percent
-            self.min_goal = min_goal
-            self.max_goal = max_goal
-            self.budget_increase = budget_increase
+    def __init__(self, acc_id, month, beginning_balance, monthly_income, monthly_expense,
+                current_balance, wants_percent, needs_percent, savings_percent, min_goal, max_goal, increase_decrease):
+        self.acc_id = acc_id
+        self.month = month
+        self.beginning_balance = beginning_balance
+        self.monthly_income = monthly_income
+        self.monthly_expense = monthly_expense
+        self.current_balance = current_balance
+        self.wants_percent = wants_percent
+        self.needs_percent = needs_percent
+        self.savings_percent = savings_percent
+        self.min_goal = min_goal
+        self.max_goal = max_goal
+        self.increase_decrease = increase_decrease
 
-        def __repr__(self):
-            return '<AllUserData %r>' % self.records
-        
+    def __repr__(self):
+        return '<AllUserData %r>' % self.records
+    
+
+
+class Goals(db.Model):
+    __tablename__ = 'user_goals'
+    records = db.Column(db.Integer, primary_key=True)
+    #acc_id = db.Column(db.Integer, db.ForeignKey('account.id')) #remove foreign key for demo
+    acc_id = db.Column(db.Integer,nullable=False)
+    #name = db.Column(db.String(255))
+    goals = db.Column(db.Numeric(10, 2))
+
+    def __init__(self, acc_id, goals):
+        self.acc_id = acc_id
+        self.goals = goals
+
+    def __repr__(self):
+        return '<ExpenseCategories %r>' % self.id
+
+    
 
         
 

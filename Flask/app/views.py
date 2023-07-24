@@ -7,7 +7,7 @@ This file contains the routes for your application.
 import os,json,csv,subprocess,time
 from app import app,db,login_manager
 from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory,jsonify
-from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUserData,RecommendationReport
+from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport
 from werkzeug.utils import secure_filename
 from decimal import Decimal
 import datetime
@@ -135,7 +135,7 @@ def populate():
     
     if expenses == []:
         print("dis [] run")
-        return ["dis [] run"]
+        return jsonify(expense=[])
     for g in expenses: 
             e_list.append({
                 'id': g.id,
@@ -148,6 +148,9 @@ def populate():
                         })
     #incomechannels = db.session.execute(db.select(IncomeChannel).filter_by(acc_id=user_id)).all() #also add where the account id is the same as logged in
     incomechannels=db.session.query(IncomeChannel).filter(IncomeChannel.acc_id == user_id).all()
+    if expenses == []:
+        print("dis [] run")
+        return jsonify(income=[])
     for g in incomechannels: 
             i_list.append({
                 'id': g.id,
@@ -158,6 +161,7 @@ def populate():
                         })
             
     print(jsonify(expense=e_list,income=i_list))
+    #return jsonify(expense=e_list,income=i_list)
     return jsonify(expense=e_list,income=i_list)
 
 
@@ -215,8 +219,8 @@ def remove():
 
 def make_csv():
     # Query the table and fetch the data into a list of dictionaries
-    #table_data = session.query(AllUserData).all()
-    table_data = db.session.query(AllUserData).all()
+    #table_data = session.query(AllUsersData).all()
+    table_data = db.session.query(AllUsersData).all()
 
     # Define the CSV file path and name
     csv_file_path = 'ReccomendationScripts\\csvs\\sql_to_.csv' #change this
@@ -226,7 +230,7 @@ def make_csv():
     with open(csv_file_path, 'w', newline='') as csvfile:
         #fieldnames = ['id', 'name', 'cost', 'tier', 'expense_type', 'frequency', 'date', 'acc_id']
         #Needs_Percent changed to Needs%
-        fieldnames = ['Records','Account_ID','Start_Date', 'Current_Date', 'Beginning_Balance', 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Wants%', 'Needs%','Savings%', 'Min_Goal','Max_Goal','Budget_Increase']
+        fieldnames = ['Records','Account_ID','Month', 'Beginning_Balance', 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Wants%', 'Needs%','Savings%', 'Min_Goal','Max_Goal','Increase_Decrease']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         # Write the header row
@@ -237,8 +241,7 @@ def make_csv():
             writer.writerow({
                 'Records': row.records,
                 'Account_ID': row.acc_id,
-                'Start_Date': row.start_date,
-                'Current_Date': row.curr_date,
+                'Month': row.month,
                 'Beginning_Balance': row.beginning_balance,
                 'Monthly_Income': row.monthly_income,
                 'Monthly_Expense': row.monthly_expense,
@@ -248,11 +251,11 @@ def make_csv():
                 'Savings%': row.savings_percent,
                 'Min_Goal': row.min_goal,
                 'Max_Goal': row.max_goal,
-                'Budget_Increase': row.budget_increase
+                'Increase_Decrease': row.increase_decrease
             })
 
 
-def run_script():
+def run_script(): #not being used
     # Replace 'path_to_script.py' with the actual path to your Python script
     script_path = 'ReccomendationScripts\\reccomender.py'
     #result=None
@@ -336,10 +339,11 @@ def recommend_ratios(users):  #pass a dictionary there
     df = df.reset_index()
     df=df.drop(['index'],axis=1)
 
-    df = df.drop(['Start_Date','Current_Date'],axis=1)
+    df = df.drop(['Month'],axis=1)  
+    #:if the user has an increase meds there movements
 
     #user value is the last entry within the table:
-    user = df.tail(1)
+    user =  users#df.tail(1)
     lendf= len(df)-20
     head=df.head(lendf)
     
@@ -348,9 +352,9 @@ def recommend_ratios(users):  #pass a dictionary there
     
     indx=[]
     Monthly_Income=refvec1["Monthly_Income"] # user monthly income
-    Monthly_Expense=refvec1["Monthly_Expenses"] #user monthly expense
+    Monthly_Expense=refvec1["Monthly_Expense"] #user monthly expense
     for index,row in vec2.iterrows():
-        if  compare(row["Monthly_Income"],int(Monthly_Income)) and compare(row["Monthly_Expense"],int(Monthly_Expense)) and row["Budget_Increase"]>0 :
+        if  compare(row["Monthly_Income"],int(Monthly_Income)) and compare(row["Monthly_Expense"],int(Monthly_Expense)) and row["Increase_Decrease"]>0 :
             indx.append(index)
     if indx != []:
         df_filtered=vec2.filter(items=indx,axis=0)
@@ -369,53 +373,55 @@ def recommendation():
     with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
         sql_script = file.read()
         with app.app_context():
-            usertbl= db.session.execute(text(sql_script)).fetchall()
+            usertbl= db.session.execute(text(sql_script)).fetchall() 
     if usertbl: 
         print(usertbl)
-        for j in usertbl:  #This should run only once right?
-            beginningBalance=100000.00
-            mingoal=20000.00  #Month goals can be added into the table from goals table  
-            maxgoal=500000.00
+        for j in usertbl:  ##This has more than 1 month.
             #month needs to be changed.
-            #j.savings= (float(j.monthly_income) + float(beginningBalance)) - float(j.monthly_expenses)
-            #j.increasedecrease=13.00
-
-            user_month_data = AllUserData(j.acc_id,j.month,j.month,beginningBalance,float(j.monthly_income),
+            user_month_data = AllUsersData(j.acc_id,j.month,float(j.beginning_balancee),float(j.monthly_income),
                                           float(j.monthly_expenses),float(j.current_balance),float(j.wants_percentage),
-                                          float(j.needs_percentage),float(j.savings),mingoal,maxgoal,float(j.increasedecrease))
+                                          float(j.needs_percentage),float(j.savings),float(j.min_goal),float(j.max_goal),float(j.increase_decrease))
             #db.session.add(user_month_data) #uncomment
-            #db.session.commit() 
+            #db.session.commit()  ##Dis should happen end of each month
+            # #create to add to all_user_data table
 
             users = {   
-                        'acc_id': j.acc_id,
-                        'month': j.month, #format needs to change.
-                        'current_balance': float(j.current_balance),
-                        'monthly_income': float(j.monthly_income),
-                        'monthly_expenses': float(j.monthly_expenses),
-                        'wants': float(j.wants_percentage),
-                        'needs': float(j.needs_percentage),
-                        'savings': float(j.savings),
-                        'increasedecrease': float(j.increasedecrease)
+                        'Account_ID': j.acc_id,
+                        'Month': j.month, #format needs to change.
+                        'Beginning_Balance': float(j.beginning_balancee),
+                        'Current_Balance': float(j.current_balance),
+                        'Monthly_Income': float(j.monthly_income),
+                        'Monthly_Expense': float(j.monthly_expenses),
+                        'Wants%': float(j.wants_percentage),
+                        'Needs%': float(j.needs_percentage),
+                        'Savings%': float(j.savings),
+                        'Min_Goal': float(j.min_goal),
+                        'Max_Goal': float(j.max_goal),
+                        'Increase_Decrease': float(j.increase_decrease)
                     }
             
-        #return jsonify(users)
+        #return jsonify(users)  #should be in the if statement above
 
-    ans=None
-    #create to add to all_user_data table
-    #make_csv()
+    bestSplits=None
+    
+    
+    
+    if (db.session.execute(db.select(AllUsersData)).scalar() != []):  #dis for smthn different
+        make_csv()
+
     #ans=run_script() #remove
 
-    ans = recommend_ratios()  #dis gonna change to a list from the user
-    print("Recommendation Splits are as follows",ans)
+    bestSplits = recommend_ratios(users)  #dis gonna change to a list from the user
+    print("Recommendation Splits are as follows",bestSplits)
 
     #DROP TABLE user_goals,all_user_data
     splits = {
-        'rwants': ans[1],
-        'rneeds': ans[0],
-        'rsavings': ans[2]
+        'rwants': bestSplits[1],
+        'rneeds': bestSplits[0],
+        'rsavings': bestSplits[2]
     }
 
-    send_to_rec_table = RecommendationReport(users['acc_id'],users['month'],users['wants'],users['needs'],users['savings'],splits['rwants'],splits['rneeds'],splits['rsavings'],users['increasedecrease'])
+    send_to_rec_table = RecommendationReport(users['Account_ID'],users['Month'],users['Wants%'],users['Needs%'],users['Savings%'],splits['rwants'],splits['rneeds'],splits['rsavings'],users['Increase_Decrease'])
     db.session.add(send_to_rec_table) #uncomment
     db.session.commit() 
 
@@ -430,7 +436,7 @@ def recommendation():
 
 
 @app.route('/splits',methods=['GET']) #get from db RecommendationReport
-def splits():
+def send_splits():
     time.sleep(2)
     global user_id
     recList = []
@@ -439,7 +445,7 @@ def splits():
     print(recSplits)
     
     if recSplits == []:
-        return ["dis2 ac [] run"]
+        return jsonify(splits=[])
     for rec in recSplits: 
             recList.append({
            'id': rec.id,
@@ -451,9 +457,18 @@ def splits():
             'rwants': f'{round(float(rec.rwants), 2)}',  
             'rneeds': f'{round(float(rec.rneeds), 2)}', 
             'rsavings': f'{round(float(rec.rsavings), 2)}',  
-            # 'increasedecrease': f'{round(float(rec.increasedecrease), 2)}', #add values to table first. #and ask len do done tbl somehow
-            'increasedecrease': '20.00'
+            # 'increase_decrease': f'{round(float(rec.increase_decrease), 2)}', #add values to table first. #and ask len do done tbl somehow
+            'increase_decrease': '20.00'
                         })
             print(recList)
     return jsonify(splits=recList)
-    
+
+    #run the function that goes to another page for smooth update
+    #if statement for when the ting empty
+    #app state, create controller,and 
+    #if themm ask bout secuity, den jah...need to workpon dat.
+    #Adding commmas to money values 
+
+@app.route('/test',methods=['GET']) #test route
+def test():
+    return jsonify([{}])
