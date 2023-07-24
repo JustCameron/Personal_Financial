@@ -10,10 +10,11 @@ from flask import render_template, request, redirect, url_for, flash, session, a
 from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport
 from werkzeug.utils import secure_filename
 from decimal import Decimal
+from datetime import timedelta
 import datetime
 from werkzeug.security import check_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
-from sqlalchemy import and_, text
+from sqlalchemy import and_, text, extract
 import pandas as pd
 
 #to run flask, run flask --app Flask/app --debug run
@@ -30,20 +31,20 @@ user_id = 0
 def login(): 
     global user_id
     if (request.method=='POST'):
+        #add get credentials from flutter
         email = request.form.get('email')
         print(email)
         password = request.form.get('password')
-        # Get the username and password values from the flutter.
+
+        # Checks the username and password values from the flutter.
         user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
 
         if user is not None and check_password_hash(user.password, password): #checks password
-            
             # Gets user id, load into session
             login_user(user)
             print("user.id in login:",user.id)
             user_id = user.id
             print("user_id in login:",user_id)
-            #print(current_user.is_authenticated())
             
             response_data = {'message': 'Success', 'beg_balance': user.beginning_balance}
             print('valid user')
@@ -61,12 +62,64 @@ def load_user(id):
 def logout():
     global user_id
     if (request.method=='POST'):
-        print(user_id)
+        print("Logged out User:", user_id)
         user_id = 0
         print(user_id)
         logout_user()
         response_data = {'message': 'Success'}
         return jsonify(response_data)
+
+def get_expenses(month,year):   #based on id and month only
+    global user_id
+    e_list = []
+
+    expenses = db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == year,
+        extract('month', ExpenseList.date) == month)).all()
+    if expenses != []:
+        for g in expenses: 
+                e_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'cost': g.cost,
+                    'tier': g.tier,
+                    'expense_type': g.expense_type,
+                    'frequency': g.frequency,
+                    'date': g.date
+                            })
+    return e_list
+
+def get_income_channels(month,year):    #based on id and month only
+    global user_id
+    i_list = []
+
+    #Gets data from DB (incomechannels) and place in list of dictionaries
+    #incomechannels=db.session.query(IncomeChannel).filter(IncomeChannel.acc_id == user_id).all()
+    incomechannels = db.session.query(IncomeChannel).filter(and_(
+        IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == year,
+        extract('month', IncomeChannel.date) == month)).all()
+
+    if incomechannels != []:
+        for g in incomechannels: 
+                i_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'monthly_earning': g.monthly_earning,
+                    'frequency': g.frequency,
+                    'date': g.date
+                            })
+    return i_list
+
+def get_month_year(date_str):
+    date_str=str(date_str)
+    date_str = str(date_str.split()[0])
+    date = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    #date = datetime.datetime.now()
+    print(date)
+    month = date.month
+    year = date.year
+
+    return month,year
 
 @app.route('/')
 def home():
@@ -82,15 +135,19 @@ def about():
 def add_expense():
     global user_id
     if (request.method=='POST'):  
+        #gets form data
         name = request.form.get('name')
         cost = request.form.get('cost')
         tier = request.form.get('tier')
         expense_type = request.form.get('expenseType')
         frequency = request.form.get('frequency')
-        date = datetime.datetime.now() #assuming we get current date/time and place it in the DB
+        date = datetime.datetime.now() #gets current date/time also use to run get expenses
         acc_id = user_id
 
-        print(name,cost,tier,expense_type,frequency,date,acc_id)     
+        #print(name,cost,tier,expense_type,frequency,date,acc_id)     
+        print("Expense",name,"of",cost,"has been added for user", user_id)  
+
+        #Adds to database
         newExpense = ExpenseList(name,cost,tier,expense_type,frequency,date,acc_id)
         db.session.add(newExpense)
         db.session.commit()        
@@ -107,10 +164,11 @@ def add_income_channel():
         name = request.form.get('name')
         monthly_earning = request.form.get('monthly_earning')
         frequency = request.form.get('frequency')
-        date = datetime.datetime.now() #assuming we get current date/time and place it in the DB
+        date = datetime.datetime.now() #gets current date/time 
         acc_id = user_id
         
-        print(name,monthly_earning,frequency,date,acc_id)     
+        #print(name,monthly_earning,frequency,date,acc_id)   
+        print("IncomeChannel",name,"of",monthly_earning,"has been added for user", user_id)  
         newIncomeChannel = IncomeChannel(name,monthly_earning,frequency,date,acc_id)
         db.session.add(newIncomeChannel)
         db.session.commit()       
@@ -123,54 +181,72 @@ def add_income_channel():
 
 @app.route('/populate',methods=['GET']) #get from db expense list and income list.
 def populate():
-    time.sleep(2)
+    time.sleep(2) #helps prevent flutter running this before logging in the user.
     global user_id
     e_list = []
-    i_list = []
+    i_list = []    
 
-    #expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
-    expenses = db.session.query(ExpenseList).filter(ExpenseList.acc_id == user_id).all()
-    print('populate user_id',user_id)
-    print(expenses)
+    """  """
+    curr_date = datetime.datetime.now() #gets current date/time 
+    month,year = get_month_year(curr_date)
+    expenslis=get_expenses(month,year)
+    incomelis=get_income_channels(month,year)
+    return jsonify(expense=expenslis,income=incomelis)
+
     
-    if expenses == []:
-        print("dis [] run")
-        return jsonify(expense=[])
-    for g in expenses: 
-            e_list.append({
-                'id': g.id,
-                'name': g.name,
-                'cost': g.cost,
-                'tier': g.tier,
-                'expense_type': g.expense_type,
-                'frequency': g.frequency,
-                'date': g.date
-                        })
+    
+    #Gets data from DB and place in list of dictionaries
+
+    print('populate user_id',user_id, "commencing...")
+    expenses = db.session.query(ExpenseList).filter(ExpenseList.acc_id == user_id).all()
+    
+    """ 
+        expenses = db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == 2023,
+        extract('month', ExpenseList.date) == 6)).all()
+    """
+    
+    #print('populate user_id',user_id)
+    #print(expenses).
+
+    #Gets data from DB (expenses) and place in list of dictionaries
+    if expenses != []:
+        for g in expenses: 
+                e_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'cost': g.cost,
+                    'tier': g.tier,
+                    'expense_type': g.expense_type,
+                    'frequency': g.frequency,
+                    'date': g.date
+                            })
     #incomechannels = db.session.execute(db.select(IncomeChannel).filter_by(acc_id=user_id)).all() #also add where the account id is the same as logged in
+    
+    #Gets data from DB (incomechannels) and place in list of dictionaries
     incomechannels=db.session.query(IncomeChannel).filter(IncomeChannel.acc_id == user_id).all()
-    if expenses == []:
-        print("dis [] run")
-        return jsonify(income=[])
-    for g in incomechannels: 
-            i_list.append({
-                'id': g.id,
-                'name': g.name,
-                'monthly_earning': g.monthly_earning,
-                'frequency': g.frequency,
-                'date': g.date
-                        })
+    if incomechannels != []:
+        for g in incomechannels: 
+                i_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'monthly_earning': g.monthly_earning,
+                    'frequency': g.frequency,
+                    'date': g.date
+                            })
             
     print(jsonify(expense=e_list,income=i_list))
-    #return jsonify(expense=e_list,income=i_list)
     return jsonify(expense=e_list,income=i_list)
 
 
-@app.route('/signup', methods=['POST', 'GET'])
+@app.route('/signup', methods=['POST', 'GET'])  
 def signup(): 
     if (request.method=='POST'):
         email = request.form.get('email')
         password = request.form.get('password')
-        # Get the username and password values from the flutter.
+        # Gets the username and password values from the flutter.
+
+        #also get  goals and beg_balance here
 
         user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
 
@@ -179,7 +255,7 @@ def signup():
             print(email,password)     
             newuser = Account(email,password)
             db.session.add(newuser)
-            db.session.commit() #LOGIN USER AFTER DIS
+            db.session.commit() #Login user
             
             response_data = {'message': 'Success'}
             print('200')
@@ -189,37 +265,32 @@ def signup():
             response_data = {'message': 'Failed'}
             return jsonify(response_data)
 
-@app.route('/remove',methods=['POST']) #
+@app.route('/remove',methods=['POST']) 
 def remove():
     global user_id
     
     if (request.method=='POST'):
         
-        table = request.form.get('table') #IncomeChannel #ExpenseList
+        table = request.form.get('table') #IncomeChannel #ExpenseList  #Classes in models.py
         recordID = request.form.get('record_id')
 
-        print(table)
-        print(recordID)
+        #print(table)
+        #print(recordID)
 
-        table_obj = globals()[table]
-        print(table_obj)
+        table_obj = globals()[table] #Checks for this class in models.py 
+        #print(table_obj)
         record = db.session.execute(db.select(table_obj).filter_by(id=recordID)).scalar()
         #record = db.session.execute(db.select(table).filter(and_(id.recordID == value1, table.column2 == value2))).scalar()
-    
-        db.session.delete(record)
+        print("Record",record.name,"in",table, "has been removed.")
+        db.session.delete(record) #removes record in DB
         db.session.commit()        
-
-        #flutter code
-        #final sendExpense= {'table': 'ModelTableName', 'record_id': 'bro idek.'};                                
-        #final sentExpense= MyApp.of(context).flaskConnect.sendData('remove', sendExpense);
 
         response_data = {'message': 'Success'}
         return jsonify(response_data)
     
 
 def make_csv():
-    # Query the table and fetch the data into a list of dictionaries
-    #table_data = session.query(AllUsersData).all()
+    # Query the table in DB and fetch the data into a list of dictionaries
     table_data = db.session.query(AllUsersData).all()
 
     # Define the CSV file path and name
@@ -228,8 +299,6 @@ def make_csv():
 
     # Write the data to the CSV file
     with open(csv_file_path, 'w', newline='') as csvfile:
-        #fieldnames = ['id', 'name', 'cost', 'tier', 'expense_type', 'frequency', 'date', 'acc_id']
-        #Needs_Percent changed to Needs%
         fieldnames = ['Records','Account_ID','Month', 'Beginning_Balance', 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Wants%', 'Needs%','Savings%', 'Min_Goal','Max_Goal','Increase_Decrease']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
@@ -331,7 +400,7 @@ def compare(refnum,num):
 # expense of the current user.
 #def recommend(vec2): #what it should be
 
-def recommend_ratios(users):  #pass a dictionary there
+def recommend_ratios(users):  #dictionary passes here
 
     path= 'ReccomendationScripts\csvs\sql_to_.csv'
     df=pd.read_csv(path)
@@ -340,9 +409,9 @@ def recommend_ratios(users):  #pass a dictionary there
     df=df.drop(['index'],axis=1)
 
     df = df.drop(['Month'],axis=1)  
-    #:if the user has an increase meds there movements
+    
 
-    #user value is the last entry within the table:
+    #user value is the last entry within the table if tail was used
     user =  users#df.tail(1)
     lendf= len(df)-20
     head=df.head(lendf)
@@ -373,7 +442,7 @@ def recommendation():
     with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
         sql_script = file.read()
         with app.app_context():
-            usertbl= db.session.execute(text(sql_script)).fetchall() 
+            usertbl= db.session.execute(text(sql_script)).fetchall() #places user info into AllUsersData format
     if usertbl: 
         print(usertbl)
         for j in usertbl:  ##This has more than 1 month.
@@ -383,7 +452,7 @@ def recommendation():
                                           float(j.needs_percentage),float(j.savings),float(j.min_goal),float(j.max_goal),float(j.increase_decrease))
             #db.session.add(user_month_data) #uncomment
             #db.session.commit()  ##Dis should happen end of each month
-            # #create to add to all_user_data table
+            #create to add to all_user_data table
 
             users = {   
                         'Account_ID': j.acc_id,
@@ -400,7 +469,7 @@ def recommendation():
                         'Increase_Decrease': float(j.increase_decrease)
                     }
             
-        #return jsonify(users)  #should be in the if statement above
+        #return jsonify(users)  #should be in the for statement above
 
     bestSplits=None
     
@@ -411,10 +480,9 @@ def recommendation():
 
     #ans=run_script() #remove
 
-    bestSplits = recommend_ratios(users)  #dis gonna change to a list from the user
+    bestSplits = recommend_ratios(users)  #gets the ratios based on all users in db
     print("Recommendation Splits are as follows",bestSplits)
 
-    #DROP TABLE user_goals,all_user_data
     splits = {
         'rwants': bestSplits[1],
         'rneeds': bestSplits[0],
@@ -422,7 +490,7 @@ def recommendation():
     }
 
     send_to_rec_table = RecommendationReport(users['Account_ID'],users['Month'],users['Wants%'],users['Needs%'],users['Savings%'],splits['rwants'],splits['rneeds'],splits['rsavings'],users['Increase_Decrease'])
-    db.session.add(send_to_rec_table) #uncomment
+    db.session.add(send_to_rec_table) #Adds rec splits + current splits to DB
     db.session.commit() 
 
 
@@ -435,8 +503,8 @@ def recommendation():
         #So the sql also needs to for a specific month. So have the reccomend function run for reach month.
 
 
-@app.route('/splits',methods=['GET']) #get from db RecommendationReport
-def send_splits():
+@app.route('/splits',methods=['GET']) #get from db RecommendationReport Cannot send this @start.because data will be different for each month in reccomendation section.
+def send_splits(): 
     time.sleep(2)
     global user_id
     recList = []
@@ -444,23 +512,23 @@ def send_splits():
     print('populate user_id',user_id)
     print(recSplits)
     
-    if recSplits == []:
-        return jsonify(splits=[])
-    for rec in recSplits: 
-            recList.append({
-           'id': rec.id,
-            'acc_id': rec.acc_id,
-            'date': rec.date,
-            'wants': f'{round(float(rec.wants), 2)}', 
-            'needs': f'{round(float(rec.needs), 2)}',  
-            'savings': f'{round(float(rec.savings), 2)}', 
-            'rwants': f'{round(float(rec.rwants), 2)}',  
-            'rneeds': f'{round(float(rec.rneeds), 2)}', 
-            'rsavings': f'{round(float(rec.rsavings), 2)}',  
-            # 'increase_decrease': f'{round(float(rec.increase_decrease), 2)}', #add values to table first. #and ask len do done tbl somehow
-            'increase_decrease': '20.00'
-                        })
-            print(recList)
+    if recSplits != []:
+        
+        for rec in recSplits: 
+                recList.append({
+            'id': rec.id,
+                'acc_id': rec.acc_id,
+                'date': rec.date,
+                'wants': f'{round(float(rec.wants), 2)}', 
+                'needs': f'{round(float(rec.needs), 2)}',  
+                'savings': f'{round(float(rec.savings), 2)}', 
+                'rwants': f'{round(float(rec.rwants), 2)}',  
+                'rneeds': f'{round(float(rec.rneeds), 2)}', 
+                'rsavings': f'{round(float(rec.rsavings), 2)}',  
+                #'increase_decrease': f'{round(float(rec.increase_decrease), 2)}', #add values to table first #error mon. fix
+                'increase_decrease': '20.00'
+                            })
+                print(recList)
     return jsonify(splits=recList)
 
     #run the function that goes to another page for smooth update
@@ -468,7 +536,127 @@ def send_splits():
     #app state, create controller,and 
     #if themm ask bout secuity, den jah...need to workpon dat.
     #Adding commmas to money values 
+    #Create a function that runs every month to do a rollover ting so  user should have option to cancel subscription or monthly tings.
+        #Store another table that would have a true/false column for rolover which would be checked when adding an expense.
+            #also would have to remove it from the table at the end of month den.
+    #:if the user has an increase meds there movements
+
+
+@app.route('/month/data',methods=['POST']) #get from db expense list and income list.
+def month_data():
+    time.sleep(2)
+    global user_id
+    e_list = []
+    i_list = []
+    recList = []
+
+
+    target_year = request.form.get('year')
+    target_month = request.form.get('month')
+
+
+
+    #expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
+    expenses = db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+        extract('month', ExpenseList.date) == target_month)).all()
+    
+    incomechannels = db.session.query(IncomeChannel).filter(and_(
+        IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == target_year,
+        extract('month', IncomeChannel.date) == target_month)).all()
+    
+    recSplits = db.session.query(RecommendationReport).filter(and_(
+        RecommendationReport.acc_id == user_id,extract('year', RecommendationReport.date) == target_year,
+        extract('month', RecommendationReport.date) == target_month)).all()
+    #incomechannels = db.session.execute(db.select(table).filter(and_(id.recordID == value1, table.column2 == value2))).scalar()
+
+    
+    #Expenses
+    if expenses != []:
+        for g in expenses: 
+                e_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'cost': g.cost,
+                    'tier': g.tier,
+                    'expense_type': g.expense_type,
+                    'frequency': g.frequency,
+                    'date': g.date
+                            })
+    #incomechannels = db.session.execute(db.select(IncomeChannel).filter_by(acc_id=user_id)).all() #also add where the account id is the same as logged in
+    #incomechannels=db.session.query(IncomeChannel).filter(IncomeChannel.acc_id == user_id).all()
+    
+    #Income Channels
+    if incomechannels != []:
+        for g in incomechannels: 
+                i_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'monthly_earning': g.monthly_earning,
+                    'frequency': g.frequency,
+                    'date': g.date
+                            })
+
+    #Recommendation of Splits    
+    if recSplits != []:
+        for rec in recSplits: 
+                recList.append({
+                'id': rec.id,
+                'acc_id': rec.acc_id,
+                'date': rec.date,
+                'wants': f'{round(float(rec.wants), 2)}', 
+                'needs': f'{round(float(rec.needs), 2)}',  
+                'savings': f'{round(float(rec.savings), 2)}', 
+                'rwants': f'{round(float(rec.rwants), 2)}',  
+                'rneeds': f'{round(float(rec.rneeds), 2)}', 
+                'rsavings': f'{round(float(rec.rsavings), 2)}',  
+                'increase_decrease': f'{round(float(rec.increase_decrease), 2)}', 
+                #'increase_decrease': '20.00'
+                            })
+    print(jsonify(expense=e_list,income=i_list,splits=recList))
+    return jsonify(expense=e_list,income=i_list,splits=recList)
+
 
 @app.route('/test',methods=['GET']) #test route
 def test():
-    return jsonify([{}])
+    date = datetime.datetime.now() #gets current date/time 
+    lef,right = get_month_year('2023-07-21') #get_month_year(2023-07-21)
+    return jsonify([lef,right])
+
+def rollover(): #runs for at the end of the month
+    #target_year = request.form.get('year')
+    #target_month = request.form.get('month')
+    global user_id
+    target_year = 2023
+    target_month = 7
+    user_id = 2 #used for testing...remove
+    e_list = []
+
+
+    expenses = db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+        extract('month', ExpenseList.date) == target_month),ExpenseList.frequency == 'Monthly').all()
+    if expenses != []:
+        for g in expenses: 
+                e_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'cost': g.cost,
+                    'tier': g.tier,
+                    'expense_type': g.expense_type,
+                    'frequency': g.frequency,
+                    'date': g.date
+                            })
+        #also create a table that allows user to choose if they want to rollover or not
+    #print(expenses)
+    for j in e_list:
+        #print(j['date'])
+
+        # Convert the timestamps to datetime objects
+        datetime_objects = datetime.strptime(str(j['date']), '%Y-%m-%d %H:%M:%S.%f')
+
+        # Add one month to each datetime object
+        j['date'] = (datetime_objects + timedelta(days=30)).replace(day=1) 
+
+    return jsonify(exp=e_list)
+
