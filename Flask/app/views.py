@@ -5,7 +5,8 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file contains the routes for your application.
 """
 import os,json,csv,subprocess,time
-from app import app,db,login_manager
+import uuid
+from app import app,db,login_manager,jwt
 from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory,jsonify
 from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport
 from werkzeug.utils import secure_filename
@@ -16,6 +17,7 @@ from werkzeug.security import check_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
 from sqlalchemy import and_, text, extract
 import pandas as pd
+from flask_jwt_extended import create_access_token, jwt_required,get_jwt_identity
 
 #to run flask, run flask --app Flask/app --debug run
 #to migrate and dem tings deh, run  flask --app=Flask/App db init  and change init to smthn migrate/upgrade.
@@ -43,11 +45,14 @@ def login():
             # Gets user id, load into session
             login_user(user)
             print("user.id in login:",user.id)
+            access_token = create_access_token(identity=email)
+            #print(access_token)
+            
             user_id = user.id
             print("user_id in login:",user_id)
             
-            response_data = {'message': 'Success', 'beg_balance': user.beginning_balance}
-            print('valid user')
+            response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token}
+            print('valid user',access_token)
             return jsonify(response_data)
         else:
             response_data = {'message': 'Failed'}
@@ -132,6 +137,7 @@ def about():
     return render_template('about.html', name="Bob")
 
 @app.route('/expense/add',methods=['POST']) #Sends expense added to db
+@jwt_required()
 def add_expense():
     global user_id
     if (request.method=='POST'):  
@@ -157,6 +163,7 @@ def add_expense():
         return jsonify(response_data)
 
 @app.route('/incomeChannel/add',methods=['POST']) #Sends income_channel added to db
+@jwt_required()
 def add_income_channel():
     global user_id
     if (request.method=='POST'):
@@ -180,8 +187,11 @@ def add_income_channel():
         return jsonify(response_data)
 
 @app.route('/populate',methods=['GET']) #get from db expense list and income list.
+@jwt_required()
 def populate():
-    time.sleep(2) #helps prevent flutter running this before logging in the user.
+    time.sleep(3) #helps prevent flutter running this before logging in the user.
+    #current_user = get_jwt_identity()
+    #print("WAH DIS"current_user)
     global user_id
     e_list = []
     i_list = []    
@@ -266,6 +276,7 @@ def signup():
             return jsonify(response_data)
 
 @app.route('/remove',methods=['POST']) 
+@jwt_required()
 def remove():
     global user_id
     
@@ -436,6 +447,7 @@ def recommend_ratios(users):  #dictionary passes here
 
 
 @app.route('/recommendation/report',methods=['GET']) 
+#@jwt_required()
 def recommendation():
     global user_id #remove l8r
     users=[]
@@ -504,6 +516,7 @@ def recommendation():
 
 
 @app.route('/splits',methods=['GET']) #get from db RecommendationReport Cannot send this @start.because data will be different for each month in reccomendation section.
+@jwt_required()
 def send_splits(): 
     time.sleep(2)
     global user_id
@@ -540,9 +553,11 @@ def send_splits():
         #Store another table that would have a true/false column for rolover which would be checked when adding an expense.
             #also would have to remove it from the table at the end of month den.
     #:if the user has an increase meds there movements
+    #at least have in settings to set their default ratio wants/needs/savings.
 
 
 @app.route('/month/data',methods=['POST']) #get from db expense list and income list.
+#@jwt_required()
 def month_data():
     time.sleep(2)
     global user_id
@@ -617,12 +632,13 @@ def month_data():
     return jsonify(expense=e_list,income=i_list,splits=recList)
 
 
-@app.route('/test',methods=['GET']) #test route
+@app.route('/test', methods=['GET'])
 def test():
-    date = datetime.datetime.now() #gets current date/time 
-    lef,right = get_month_year('2023-07-21') #get_month_year(2023-07-21)
-    return jsonify([lef,right])
-
+    user_id = "ewer3"
+    access_token = create_access_token(identity=user_id)
+    print(access_token)
+    return jsonify({'access_token': access_token})
+    
 def rollover(): #runs for at the end of the month
     #target_year = request.form.get('year')
     #target_month = request.form.get('month')
@@ -660,3 +676,8 @@ def rollover(): #runs for at the end of the month
 
     return jsonify(exp=e_list)
 
+# def tier_recommendations(): #work  on now
+#     expenses = db.session.query(ExpenseList).filter(and_(
+#         ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+#         extract('month', ExpenseList.date) == target_month),ExpenseList.frequency == 'Monthly').all()
+    

@@ -14,6 +14,8 @@ import 'package:fl_chart/fl_chart.dart';
 //for back end
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 
 
@@ -156,6 +158,11 @@ class MyAppState extends ChangeNotifier {
   //Stuff For Jon
   double wantTotal = 0.00; // Keep track of total spent on wants - For Jon
   double needTotal = 0.00; // Keep track of total spent on needs - For Jon
+
+  //Details for signup()
+  String newUserEmail = "";
+  String newUserPassword = "";
+
 
 
   void removeExpense(exp){ //Remove clicked Expense from Expense List
@@ -470,6 +477,9 @@ class _LoginPageState extends State<LoginPage> {
                   final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
                   final sentCredentials= MyApp.of(context).flaskConnect.sendData('login', sendCredentials);
                   sentCredentials.then((data){ 
+                    String tkn = data['access_token'];
+                    MyApp.of(context).flaskConnect.saveTokenToSharedPreferences(tkn);
+
                     double bBalance = double.parse(data['beg_balance']);                
                     //print("The ID sent $id");
                     appState.balance += bBalance; //Dis correct?
@@ -3134,7 +3144,11 @@ class _SignUpPageState extends State<SignUpPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                       side: BorderSide.none, //Removes border colour from button
                     ),
-                    onPressed: (){ //After clicking Login
+                    onPressed: (){ //After clicking Login  
+                      //Add user info here and save until complete
+                      //appState.newUserEmail = "";
+                      //appState.newUserPassword = "";
+
                       // ADDS CREDENTIALS TO DB; SENDS TO FLASK
                         //final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
                         //final sentCredentials= MyApp.of(context).flaskConnect.sendData('signup', sendCredentials);
@@ -3203,18 +3217,18 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
     String annualinterest;
     String savingsgoal;
     //Checkboxes
-    bool? check1 = false;
-    bool? check2 = false;
-    bool? check3 = false;
-    bool? check4 = false;
-    bool? check5 = false;
-    bool? check6 = false;
-    bool? check7 = false;
-    bool? check8 = false;
-    bool? check9 = false;
-    bool? check10 = false;
-    bool? check11 = false;
-    bool? check12 = false;
+    bool? check1 = false;   //House
+    bool? check2 = false;   //Retirement
+    bool? check3 = false;   //Travel
+    bool? check4 = false;   //Electronics  
+    bool? check5 = false;   //Family
+    bool? check6 = false;   //Education
+    bool? check7 = false;   //Emergency Funds
+    bool? check8 = false;   //Homeware
+    bool? check9 = false;   //Shopping
+    bool? check10 = false;  //Mortgage
+    bool? check11 = false;  //Car
+    bool? check12 = false;  //Other
 
     return DefaultTabController(
       initialIndex: 0,
@@ -3247,7 +3261,9 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                     icon: const Icon(Icons.check),
                     iconSize: 25,
                     tooltip: 'Complete',
-                    onPressed: () {
+                    onPressed: () { //ADD HERE
+                      //appState.newUserEmail,appState.newUserPassword send here
+                      
                       // Go to home page
                       Navigator.push(
                         context, 
@@ -6007,8 +6023,12 @@ class DataConnection {
   DataConnection(this.baseUrl);
 
   Future<Map<String, dynamic>> fetchData(String endpoint) async {
+    
     final url = Uri.parse('$baseUrl/$endpoint');
-    final response = await http.get(url);
+    // Get the JWT token from SharedPreferences
+    String? jwtToken = await getTokenFromSharedPreferences();
+    final headers = {"Authorization": "Bearer $jwtToken"};
+    final response = await http.get(url,headers: headers);
 
     if (response.statusCode == 200) {
       dynamic decodedData = json.decode(response.body);
@@ -6023,7 +6043,9 @@ class DataConnection {
 
   Future<Map<String, dynamic>> sendData(String endpoint, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/$endpoint');
-    final headers = {"Content-Type": "application/x-www-form-urlencoded"};
+    // Get the JWT token from SharedPreferences
+    String? jwtToken = await getTokenFromSharedPreferences();
+    final headers = {"Content-Type": "application/x-www-form-urlencoded",'Authorization': 'Bearer $jwtToken'};
 
     final response = await http.post(url, headers: headers, body: data);
 
@@ -6035,6 +6057,17 @@ class DataConnection {
       return {}; // or return an appropriate default value based on your use case
     }
   }
+  void saveTokenToSharedPreferences(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jwt_token', token);
+  }
+
+  // Retrieve the JWT token from SharedPreferences
+  Future<String?> getTokenFromSharedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jwt_token');
+  }
+
 }
 
 
