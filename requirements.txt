@@ -24,7 +24,5 @@ pandas==2.0.3
 #psycopg2 too i think
 #pip install -r requirements.txt
 #dotenv
-#flask_sqlalchemy 
-#flask_migrate
-#Flask-JWT-Simple-0.0.3 PyJWT-2.8.0
+flask_jwt_extended==4.5.2
 
