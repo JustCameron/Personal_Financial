@@ -1,6 +1,6 @@
 import csv
 import os
-import mysql.connector
+#import mysql.connector
 from sqlalchemy import create_engine, Column, Integer, String, Date, Numeric, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -27,12 +27,12 @@ if dbms == "1":
     tables = [table[0] for table in cursor]
 
     if 'all_user_data' not in tables:
-        # Create table 'all_user_data'
+        # Create table 'all_user_data'   
+        #DECIMAL(15,2)to  db.Column(db.Numeric(10, 2))    NUMERIC
         cursor.execute("""CREATE TABLE all_user_data (
             records INT AUTO_INCREMENT PRIMARY KEY,
             acc_id INT,
-            start_date DATE,
-            curr_date DATE,
+            month DATE,
             beginning_balance DECIMAL(15, 2),
             monthly_income DECIMAL(15, 2),
             monthly_expense DECIMAL(15, 2),
@@ -42,22 +42,22 @@ if dbms == "1":
             savings_percent DECIMAL(4, 2),
             min_goal DECIMAL(15, 2),
             max_goal DECIMAL(15, 2),
-            budget_increase DECIMAL(6, 2),
+            increase_decrease DECIMAL(6, 2),
             INDEX (acc_id)
         )""")
         cursor.execute("ALTER TABLE all_user_data AUTO_INCREMENT = 1")
 
     if 'user_goals' not in tables:
-        # Create table 'user_goals' with foreign key constraint
+        # Create table 'user_goals' with foreign key constraint  #DECIMAL
         cursor.execute("""CREATE TABLE user_goals (
             records INT AUTO_INCREMENT PRIMARY KEY,
             acc_id INT,
-            goals DECIMAL(15, 2),
+            goals NUMERIC(15, 2),
             FOREIGN KEY (acc_id) REFERENCES all_user_data(records)
         )""")
         cursor.execute("ALTER TABLE user_goals AUTO_INCREMENT = 1")
 
-    csv_folder = "csvs"
+    csv_folder = "ReccomendationScripts\csvs"
     user = 0
     totalgoals = 0
     files = 0
@@ -80,15 +80,15 @@ if dbms == "1":
             for row in reader:
                 i+=1
                 if row[0] == '':     #if the theres only goal in the row of data (so the same user)
-                    #goals.append(row[10])
-                    goals.append((user,row[10]))
+                    #goals.append(row[9])
+                    goals.append((user,row[9]))
                     continue
 
-                query1 = "INSERT INTO all_user_data (acc_id, start_date, curr_date, beginning_balance, monthly_income, monthly_expense, current_balance, wants_percent, needs_percent, savings_percent, min_goal, max_goal, budget_increase) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                query1 = "INSERT INTO all_user_data (acc_id, month, beginning_balance, monthly_income, monthly_expense, current_balance, wants_percent, needs_percent, savings_percent, min_goal, max_goal, increase_decrease) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
-                values1 = (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9],row[10], row[11],row[12])
+                values1 = (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9],row[10], row[11])
 
-                goals.append((row[0],row[10]))
+                goals.append((row[0],row[9]))
                 if user != int(row[0]):     #if the user is different then increment. 
                     user = int(row[0]) + 1
                 cursor = mydb.cursor()
@@ -124,12 +124,12 @@ elif dbms == "2":
     session = Session()
     Base = declarative_base()
 
-    class AllUserData(Base):
-        __tablename__ = 'all_user_data'
+    class AllUsersData(Base):
+        __tablename__ = 'all_users_data'
         records = Column(Integer, primary_key=True)
         acc_id = Column(Integer)
-        start_date = Column(Date)
-        curr_date = Column(Date)
+        month = Column(Date)
+        #curr_date = Column(Date)
         beginning_balance = Column(Numeric(15, 2))
         monthly_income = Column(Numeric(15, 2))
         monthly_expense = Column(Numeric(15, 2))
@@ -137,7 +137,7 @@ elif dbms == "2":
         wants_percent = Column(Numeric(5, 2))
         needs_percent = Column(Numeric(5, 2))
         savings_percent = Column(Numeric(4, 2))
-        budget_increase = Column(Numeric(6, 2))
+        increase_decrease = Column(Numeric(6, 2))
         min_goal = Column(Numeric(15, 2))
         max_goal = Column(Numeric(15, 2))
         __table_args__ = (UniqueConstraint('records', name='uq_records_id'),)
@@ -145,11 +145,12 @@ elif dbms == "2":
     class UserGoals(Base):
         __tablename__ = 'user_goals'
         records = Column(Integer, primary_key=True)
-        acc_id = Column(Integer, ForeignKey('all_user_data.records'))  #shouldnt this be acc_id?
+        #acc_id = Column(Integer, ForeignKey('all_user_data.records'))  
+        acc_id = Column(Integer,nullable=False)
         goals = Column(Numeric(15, 2))
         __table_args__ = {'extend_existing': True}
 
-    csv_folder = "csvs"
+    csv_folder = "ReccomendationScripts\csvs"
     user = 0
     total_goals = 0
     files = 0
@@ -171,27 +172,26 @@ elif dbms == "2":
             user = 30
             for row in reader:
                 if row[0] == '':    #if the theres only goal in the row of data (so the same user)
-                    goals.append((user,row[10]))
+                    goals.append((user,row[9]))
                     continue
 
-                all_user_data = AllUserData(
+                all_user_data = AllUsersData(
                     acc_id=row[0],
-                    start_date=row[1],
-                    curr_date=row[2],
-                    beginning_balance=row[3],
-                    monthly_income=row[4],
-                    monthly_expense=row[5],
-                    current_balance=row[6],
-                    wants_percent=row[7],
-                    needs_percent=row[8],
-                    savings_percent=row[9],
-                    min_goal=row[10],
-                    max_goal=row[11],
-                    budget_increase=row[12]
+                    month=row[1],
+                    beginning_balance=row[2],
+                    monthly_income=row[3],
+                    monthly_expense=row[4],
+                    current_balance=row[5],
+                    wants_percent=row[6],
+                    needs_percent=row[7],
+                    savings_percent=row[8],
+                    min_goal=row[9],
+                    max_goal=row[10],
+                    increase_decrease=row[11]
                 )
 
-                #goals.append(row[10])
-                goals.append((user,row[10]))
+                #goals.append(row[9])
+                goals.append((user,row[9]))
                 if user != int(row[0]):     #if the user is different then increment. 
                     user = int(row[0]) + 1
                 session.add(all_user_data)

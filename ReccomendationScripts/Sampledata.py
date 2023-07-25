@@ -7,13 +7,13 @@ import os
 acc_id=30 #start here so the flutter dart system run and create table, it nuh affect it.
 ttlfiles = input("Enter how much users you want to develop ")
 file_name = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz', k=8)) + '.csv'
-folder_name = "csvs"
+folder_name = "ReccomendationScripts\csvs"
 os.makedirs(folder_name, exist_ok=True)
 sectionpath = os.path.join(folder_name, file_name)
 
 with open(sectionpath, mode='a', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(['Account_ID','Start_Date', 'Current_Date', 'Beginning_Balance', 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Wants%', 'Needs%','Savings%', 'Min_Goal','Max_Goal', 'Budget_Increase'])
+    writer.writerow(['Account_ID','Month', 'Beginning_Balance', 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Wants%', 'Needs%','Savings%', 'Min_Goal','Max_Goal', 'Increase_Decrease'])
 
 for x in range(int(ttlfiles)):
     # Generate start date and current date randomly within a 30 day anywhere from jan1 of 2012 up to dec 30 2022
@@ -36,11 +36,11 @@ for x in range(int(ttlfiles)):
     except OverflowError:
         continue
 
-    # WARNING THERE IS A POSSIBILITY FEB 29 ON NOT A LEAP YEAR CAN BE PUT IN, IF IT BRUK JUST RERUN IT AND A NEW RANDOM DATE MEK
+    # Fixed.WARNING THERE IS A POSSIBILITY FEB 29 ON NOT A LEAP YEAR CAN BE PUT IN, IF IT BRUK JUST RERUN IT AND A NEW RANDOM DATE MEK
     start_date = datetime.date(randyear, randmonth, randdate)
     user_start = start_date
     one_month_delta = datetime.timedelta(days=increment)
-    current_date = start_date + one_month_delta
+    month = start_date + one_month_delta
 
     # Cook up some random floats for beginning balance, and monthly income, accumulate the balance and the i chefed up a random expense value. assuming US money for costs btw
     beginning_balance = round(random.uniform(10000.00, 100000.00), 2)
@@ -88,11 +88,11 @@ for x in range(int(ttlfiles)):
     
     with open(sectionpath, mode='a', newline='') as file:
         writer = csv.writer(file)
-        #writer.writerow(['Start_Date', 'Current_Date', 'Beginning_Balance', 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Needs%', 'Wants%','Savings%', 'goals', 'Budget_Increase'])
-        writer.writerow([acc_id,user_start,current_date,beginning_balance,monthly_income,monthly_expenses,balance,wants,needs,savings,mingoal,max(goals),inc_dec])
+        #writer.writerow(['Start_Date', Month, 'Monthly_Income','Monthly_Expense', 'Current_Balance', 'Needs%', 'Wants%','Savings%', 'goals', 'Budget_Increase'])
+        writer.writerow([acc_id,month,beginning_balance,monthly_income,monthly_expenses,balance,wants,needs,savings,mingoal,max(goals),inc_dec])
         if len(goals) >= 2:
             for i in range(1,len(goals)):
-                writer.writerow(["","","","","","","","","","",goals[i]])
+                writer.writerow(["","","","","","","","","",goals[i]])
 
         dataperperson= random.randint(3,12)
 
@@ -100,10 +100,10 @@ for x in range(int(ttlfiles)):
         for x in range(dataperperson):
 
             # New current date for the next records
-            start_date = current_date
+            start_date = month
             increment=random.randint(15,30)
             one_month_delta = datetime.timedelta(days=increment)
-            current_date = start_date + one_month_delta 
+            month = start_date + one_month_delta 
         
             # Beginning balance from previous month, along with new income and sum
             beginning_balance=balance
@@ -121,10 +121,10 @@ for x in range(int(ttlfiles)):
 
             inc_dec = round((((balance - beginning_balance) / beginning_balance) * 100),2)
 
-            writer.writerow([acc_id,user_start,current_date,beginning_balance,monthly_income,monthly_expenses,balance,wants,needs,savings,mingoal,max(goals),inc_dec])
+            writer.writerow([acc_id,month,beginning_balance,monthly_income,monthly_expenses,balance,wants,needs,savings,mingoal,max(goals),inc_dec])
             if len(goals) >= 2:
                 for i in range(1,len(goals)):
-                    writer.writerow(["","","","","","","","","","",goals[i]])
+                    writer.writerow(["","","","","","","","","",goals[i]])
 
     acc_id += 1
     print("User ",acc_id-1, " Added")
