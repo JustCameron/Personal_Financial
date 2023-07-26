@@ -37,6 +37,7 @@ class MyApp extends StatelessWidget {
   final DataConnection flaskConnect = DataConnection('http://127.0.0.1:5000'); 
   //create an instance here to call its functions in other classes
 
+
   static MyApp of(BuildContext context) { //required to run DataConnection calls
     return context.findAncestorWidgetOfExactType<MyApp>()!;
   }
@@ -119,6 +120,7 @@ class MyAppState extends ChangeNotifier {
   bool? check10 = false;
   bool? check11 = false;
   bool? check12 = false;
+  bool? valid_user = false;
   //Icons
   Icon type = Icon(
     Icons.store_mall_directory,
@@ -165,7 +167,13 @@ class MyAppState extends ChangeNotifier {
   String newUserEmail = "";
   String newUserPassword = "";
 
+  //For Dashboard Dates
+  var currMonth = 0;
+  var currYear = 0;
 
+  //For Report
+  var repMonth = 0;
+  var repYear = 0;
 
   void removeExpense(exp){ //Remove clicked Expense from Expense List
     expenseList.remove(exp);
@@ -216,7 +224,21 @@ class MyAppState extends ChangeNotifier {
   String returnMonth(DateTime date) {
     return new DateFormat.MMMM().format(date);
   }
-  
+    void clearAllLists() {
+    transactionList.clear();
+    expenseList.clear();
+    incomeList.clear();
+    expenseTypeList.clear();
+    rankList.clear();
+    expenseFreqList.clear();
+    incomeFreqList.clear();
+    expenseidList.clear();
+    incomeidList.clear();
+    balance=0;
+    //spent=0;
+    //income=0;
+    //beginbalance=0;
+  }
 }
 class MyHomePage extends StatefulWidget {
   @override
@@ -266,6 +288,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
     Widget page;
+    
 
     // USER PASSWORD AND EMAIL INPUT GETTERS
     final emailController = TextEditingController();
@@ -526,22 +549,46 @@ class _LoginPageState extends State<LoginPage> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                   side: BorderSide.none, //Removes border colour from button
                 ),
+                
                 onPressed: (){  //After clicking Login
-                      //var login = MyApp.of(context).flaskConnect.fetchData('login');
-                  final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
+                  // This is the Error Handling Jon
+                  if (!emailformKey.currentState!.validate()) { // Checks if Email is Valid, then does something
+                    appState.createSpace = 1; // I use this later just to make some space for errors
+                  }
+                  if (!passwordformKey.currentState!.validate()) { // Checks if Password is Valid, then does something
+                    appState.createSpace = 1; // I use this later just to make some space for errors
+                  }
+                  // If Email and Password are valid, Login
+                  if (emailformKey.currentState!.validate() && passwordformKey.currentState!.validate()){
+                       //var login = MyApp.of(context).flaskConnect.fetchData('login');
+                  //final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};
+              
+                  final sendCredentials= {'email': emailController.text, 'password': passwordController.text};
                   final sentCredentials= MyApp.of(context).flaskConnect.sendData('login', sendCredentials);
-                  sentCredentials.then((data){ 
-                    String tkn = data['access_token'];
-                    MyApp.of(context).flaskConnect.saveTokenToSharedPreferences(tkn);
+                  sentCredentials.then((data){   
+                    if (data['message'] == 'Success'){
+                       String tkn = data['access_token'];
+                      MyApp.of(context).flaskConnect.saveTokenToSharedPreferences(tkn);
+                      
+                      //Gets the current month and year to use for dashboard switching and reprt
+                      appState.currMonth = data['month'];
+                      appState.repMonth = data['month'];
+                      
+                      appState.currYear = data['year'];
+                      appState.repYear = data['year'];
 
-                    double bBalance = double.parse(data['beg_balance']);                
-                    //print("The ID sent $id");
-                    appState.balance += bBalance; //Dis correct?
-                    appState.beginbalance += bBalance; //would change each month
-                    print("The Beginning balnce sent ${appState.beginbalance}");
+                      //gets staring balance of user
+                      double bBalance = double.parse(data['beg_balance']);                
+                      //print("The ID sent $id");
+                      appState.balance += bBalance; //Dis correct?
+                      appState.beginbalance += bBalance; //would change each month
+                      print("The Beginning balnce sent ${appState.beginbalance}");
+                      appState.valid_user =true;
+                    } 
                   });
-                    //add if statement to populate and change page location if login correct
+                   
                   
+                  if (appState.valid_user==true){
                   //Recieves data from database and adds to respective lists
                   var populate = MyApp.of(context).flaskConnect.fetchData('populate');
                   populate.then((data){
@@ -726,20 +773,19 @@ class _LoginPageState extends State<LoginPage> {
                   });
 
                   print('Splits OutsideLoop: ${appState.recommendedSavingsPercentage}');
-
-                  // This is the Error Handling Jon
-                  if (!emailformKey.currentState!.validate()) { // Checks if Email is Valid, then does something
-                    appState.createSpace = 1; // I use this later just to make some space for errors
-                  }
-                  if (!passwordformKey.currentState!.validate()) { // Checks if Password is Valid, then does something
-                    appState.createSpace = 1; // I use this later just to make some space for errors
-                  }
-                  // If Email and Password are valid, Login
-                  if (emailformKey.currentState!.validate() && passwordformKey.currentState!.validate()){
-                    Navigator.push(
+                
+                  Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
                     );
+                  }
+                }//if valid_user 
+                else{ //invalid user
+
+                  // Navigator.push(
+                  //   context,
+                  //   MaterialPageRoute(builder: (context) => LoginPage()), //Goes to main page
+                  //   );
                   }
                 }, //OnPressedClosure
                 child: Text('Login')),
@@ -5266,9 +5312,197 @@ class BudgetPage extends StatefulWidget{
 class _BudgetPageState extends State<BudgetPage> {
   @override
   Widget build(BuildContext context) {
-    
     var appState = context.watch<MyAppState>();
     var theme = Theme.of(context);
+
+    Future<void> getMonthData(month) async {
+    //var populate = MyApp.of(context).flaskConnect.fetchData('month/data');
+    // SENDS TO BACKEND
+      final sendtopop= {'month': '$month', 'year': '2023'};                                
+      final gotttopop=  MyApp.of(context).flaskConnect.sendData('month/data', sendtopop);
+
+      gotttopop.then((data){
+        var expenseList = data['expense'];
+        print('ExpenseList: $expenseList');
+        if (expenseList != []){
+          for (var expense in expenseList) {
+            var id = expense['id'];
+            var name = expense['name'];   
+            var cost = num.parse(expense['cost']); 
+            var tier = expense['tier'];               
+            var expenseType = expense['expense_type']; 
+            var frequency = expense['frequency']; 
+            var date = expense['date']; 
+
+            appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
+            appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
+            appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+            
+            //CALCULATION: To change
+            //Create colunmn for balance and add value here. WYUEWI
+            appState.balance -= cost; // subtract expense from balance
+            appState.spent += cost; // add expense cost to spent
+            
+              //Different WANT/NEED Symbols
+              if (expenseType == "Want") {
+                appState.wantTotal += cost; //To change
+                Padding(
+                  padding: const EdgeInsets.only(left: 5),
+                  child: appState.wantneedIcon = Icon(
+                    Icons.store_mall_directory,
+                    color: Colors.blueAccent,
+                  ),
+                );
+              
+              } else {
+                appState.needTotal += cost;
+                Padding(
+                  padding: const EdgeInsets.only(left: 5),
+                  child: appState.wantneedIcon = Icon(
+                    Icons.house,
+                    color: Colors.green
+                    ),
+                );
+              }
+            appState.type = appState.wantneedIcon;
+            appState.expenseTypeList.add(appState.type);
+
+            //Different EXPENSE RANKINGS Symbols
+            if (tier == "T1") {
+              Padding(
+                padding: const EdgeInsets.only(left: 5, top: 3),
+                child: appState.rankIcon = Icon(
+                  Icons.looks_one,
+                  color: Color.fromARGB(255, 180, 166, 35),
+                ),
+              );                        
+            } 
+            else if (tier == "T2") {
+                Padding(
+                padding: const EdgeInsets.only(left: 5, top: 3),
+                child: appState.rankIcon = Icon(
+                  Icons.looks_two,
+                  color: Colors.orange
+                  ),
+              );
+            } 
+            else if (tier == "T3") {
+                  Padding(
+                  padding: const EdgeInsets.only(left: 5, top: 3),
+                  child: appState.rankIcon = Icon(
+                  Icons.looks_3,
+                  color: Colors.red
+                  ),
+                  );
+            }
+            appState.rankIcon = appState.rankIcon;
+            appState.rankList.add(appState.rankIcon);
+
+            if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+              Padding(
+                padding: const EdgeInsets.only(left: 5, top: 3),
+                child: appState.frequencyIcon = Icon(
+                  Icons.one_x_mobiledata_outlined,
+                  color: Colors.blueGrey,
+                ),
+              );
+              }
+            else{ 
+              Padding(
+                padding: const EdgeInsets.only(left: 5),
+                child: appState.frequencyIcon = Icon(
+                  Icons.calendar_month,
+                  color: Colors.blueGrey
+                  ),
+              );
+            }
+            appState.expenseFreqList.add(appState.frequencyIcon);
+
+
+
+
+        }//end for 
+      }//end if-empty 
+        
+
+        var incomeList = data['income'];
+        print('IncomeList: $incomeList');
+        if(incomeList != []){
+          for (var income in incomeList) {
+            var id = income['id'];
+            var name = income['name'];   
+            var monthlyEarning = num.parse(income['monthly_earning']); 
+            var frequency = income['frequency']; 
+            var date = income['date']; 
+
+            appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
+            appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
+            appState.incomeidList.add((id.toString()));
+
+            //CALCULATION: To change
+            appState.balance += monthlyEarning; // adds income to remaining balance
+            appState.income += monthlyEarning; // add income value to income
+            
+            if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+              Padding(
+                padding: const EdgeInsets.only(left: 5, top: 3),
+                child: appState.incomeFrequencyIcon = Icon(
+                  Icons.one_x_mobiledata_outlined,
+                  color: Colors.blueGrey,
+                ),
+              );
+              }
+            else{ 
+              Padding(
+                padding: const EdgeInsets.only(left: 5),
+                child: appState.incomeFrequencyIcon = Icon(
+                  Icons.calendar_month,
+                  color: Colors.blueGrey
+                  ),
+              );
+            }
+            appState.incomeFreqList.add(appState.incomeFrequencyIcon);
+            // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
+            appState.wantPercentage = appState.wantTotal / appState.income;
+            appState.needPercentage = appState.needTotal / appState.income;
+            appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
+          }
+        }
+      });  //end first populate
+
+      double bwants = 0.00;
+      double bneeds = 0.00; 
+      double bsavings = 0.00;
+      double rwants = 0.00;
+      double rneeds = 0.00;
+      double rsavings = 0.00;
+      double increasedecrease = 0.00; 
+      var currDate = '';
+      
+      var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
+      recPopulate.then((data){
+        var splitList = data['splits'];
+        //print('Message: $splitList');
+        if (splitList != []){  //add to the function months yzm
+          for (var splits in splitList) {
+          
+            bwants = double.parse(splits['wants']); 
+            bneeds = double.parse(splits['needs']); 
+            bsavings = double.parse(splits['savings']); 
+            rwants = double.parse(splits['rwants']); 
+            rneeds = double.parse(splits['rneeds']); 
+            rsavings = double.parse(splits['rsavings']);
+            increasedecrease = double.parse(splits['increase_decrease']); 
+            currDate = splits['date']; 
+
+            print('Splits in loop: $rwants');
+            appState.recommendedWantsPercentage = rwants;
+            appState.recommendedNeedsPercentage = rneeds;
+            appState.recommendedSavingsPercentage = rsavings;
+          }} //End for and if 
+      });
+  }
+
 
     List<Color> piechartcolours = [Colors.lightGreen.withOpacity(0.6), Colors.blueAccent.withOpacity(0.6), Colors.deepPurple.withOpacity(0.6)]; //Create list of colours for pie chart
     //String piechartText = "Income \n ${appState.income + appState.beginbalance}"; // Income = Monthly Income + Initial Balance. Shows in chart center
@@ -5295,7 +5529,7 @@ class _BudgetPageState extends State<BudgetPage> {
 
     // Get Month:
     DateTime currentDate = DateTime.now(); //Get Current Date
-    var monthNumber = "${currentDate.month}"; //Get Current Month (as integer)
+    var monthNumber = "${appState.currMonth}"; //Get Current Month (as integer)
     var currentMonth;
     var nextMonth;
   
@@ -5437,9 +5671,13 @@ class _BudgetPageState extends State<BudgetPage> {
               children: [
                 Expanded(child: Text(""),), // just to align stuff
 
-                // NEXT MONTH BUTTON
+                // PREVIOUS MONTH BUTTON
                 IconButton(
-                  onPressed: (){}, // Code to go to previous month goes here
+                  onPressed: (){
+                    appState.clearAllLists();
+                    appState.repMonth --;
+                    getMonthData('${appState.repMonth}');
+                  }, // Code to go to previous month goes here
 
                   icon: Icon(Icons.arrow_circle_left_outlined),
                   selectedIcon: Icon(Icons.arrow_circle_left),
@@ -5465,11 +5703,16 @@ class _BudgetPageState extends State<BudgetPage> {
               ),
             ),
 
-            // PREVIOUS MONTH BUTTON
+            // NEXT MONTH BUTTON
             Padding(
               padding: const EdgeInsets.only(right:70),
               child: IconButton(
-                onPressed: (){}, // Code to go to next month goes here
+                onPressed: (){
+                  appState.clearAllLists();
+                  appState.repMonth++;
+                  getMonthData('${appState.repMonth}');
+                  
+                }, // Code to go to next month goes here
 
                 icon: Icon(Icons.arrow_circle_right_outlined),
                 selectedIcon: Icon(Icons.arrow_circle_right),
@@ -6131,7 +6374,7 @@ class DataConnection {
       print("decoded data $decodedData");
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to fetch data');
+      //throw Exception('Failed to fetch data');
       print('Failed to fetch data: ${response.statusCode}');
       return {}; // or return an appropriate default value based on your use case
     }
@@ -6139,6 +6382,13 @@ class DataConnection {
 
   Future<Map<String, dynamic>> sendData(String endpoint, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/$endpoint');
+
+    
+    if (endpoint=='login'){
+      final headers = {"Content-Type": "application/x-www-form-urlencoded"};
+      final response = await http.post(url, body: data);}
+
+
     // Get the JWT token from SharedPreferences
     String? jwtToken = await getTokenFromSharedPreferences();
     final headers = {"Content-Type": "application/x-www-form-urlencoded",'Authorization': 'Bearer $jwtToken'};
@@ -6148,7 +6398,7 @@ class DataConnection {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to send data'); 
+      //throw Exception('Failed to send data'); 
       print('Failed to fetch data: ${response.statusCode}');
       return {}; // or return an appropriate default value based on your use case
     }

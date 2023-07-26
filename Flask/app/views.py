@@ -51,7 +51,9 @@ def login():
             user_id = user.id
             print("user_id in login:",user_id)
             
-            response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token}
+            date = datetime.datetime.now()
+            month,year=get_month_year(date)
+            response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year}
             print('valid user',access_token)
             return jsonify(response_data)
         else:
@@ -83,15 +85,15 @@ def get_expenses(month,year):   #based on id and month only
         extract('month', ExpenseList.date) == month)).all()
     if expenses != []:
         for g in expenses: 
-                e_list.append({
-                    'id': g.id,
-                    'name': g.name,
-                    'cost': g.cost,
-                    'tier': g.tier,
-                    'expense_type': g.expense_type,
-                    'frequency': g.frequency,
-                    'date': g.date
-                            })
+            e_list.append({
+                'id': g.id,
+                'name': g.name,
+                'cost': g.cost,
+                'tier': g.tier,
+                'expense_type': g.expense_type,
+                'frequency': g.frequency,
+                'date': g.date
+                        })
     return e_list
 
 def get_income_channels(month,year):    #based on id and month only
@@ -106,13 +108,13 @@ def get_income_channels(month,year):    #based on id and month only
 
     if incomechannels != []:
         for g in incomechannels: 
-                i_list.append({
-                    'id': g.id,
-                    'name': g.name,
-                    'monthly_earning': g.monthly_earning,
-                    'frequency': g.frequency,
-                    'date': g.date
-                            })
+            i_list.append({
+                'id': g.id,
+                'name': g.name,
+                'monthly_earning': g.monthly_earning,
+                'frequency': g.frequency,
+                'date': g.date
+                })
     return i_list
 
 def get_month_year(date_str):
@@ -556,24 +558,36 @@ def send_splits():
     #at least have in settings to set their default ratio wants/needs/savings.
     #Notification for a monthly payment
     #recommendation value be close to the original if they dont find a given user....cuz the user 1 rn recommendation kinda ugly
-    #to lower
+    #tolower() input values for login
+    #have a threshold for expenses that +higher than max value (change to 700k)
 
 
 @app.route('/month/data',methods=['POST']) #get from db expense list and income list.
 #@jwt_required()
 def month_data():
-    time.sleep(2)
+    #time.sleep(2)
     global user_id
-    e_list = []
-    i_list = []
+    #e_list = []
+    #i_list = []
     recList = []
 
 
     target_year = request.form.get('year')
     target_month = request.form.get('month')
 
+    #target_year = '8'
+    #target_month = '2023'
+    
+    
+    #month,year = get_month_year(curr_date)
+    #print()
+    e_list=get_expenses(target_month,target_year)
+    i_list=get_income_channels(target_month,target_year)
 
-
+    recSplits = db.session.query(RecommendationReport).filter(and_(
+        RecommendationReport.acc_id == user_id,extract('year', RecommendationReport.date) == target_year,
+        extract('month', RecommendationReport.date) == target_month)).all()
+    '''  
     #expenses = db.session.execute(db.select(ExpenseList)).scalars() #also addd where the account id is the same as logged in
     expenses = db.session.query(ExpenseList).filter(and_(
         ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
@@ -583,9 +597,7 @@ def month_data():
         IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == target_year,
         extract('month', IncomeChannel.date) == target_month)).all()
     
-    recSplits = db.session.query(RecommendationReport).filter(and_(
-        RecommendationReport.acc_id == user_id,extract('year', RecommendationReport.date) == target_year,
-        extract('month', RecommendationReport.date) == target_month)).all()
+    
     #incomechannels = db.session.execute(db.select(table).filter(and_(id.recordID == value1, table.column2 == value2))).scalar()
 
     
@@ -614,7 +626,7 @@ def month_data():
                     'frequency': g.frequency,
                     'date': g.date
                             })
-
+    '''
     #Recommendation of Splits    
     if recSplits != []:
         for rec in recSplits: 
@@ -637,10 +649,24 @@ def month_data():
 
 @app.route('/test', methods=['GET'])
 def test():
-    user_id = "ewer3"
-    access_token = create_access_token(identity=user_id)
-    print(access_token)
-    return jsonify({'access_token': access_token})
+    i_list=[]
+    mad = '8'
+    incomechannels = db.session.query(IncomeChannel).filter(and_(
+        IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == '2023',
+        extract('month', IncomeChannel.date) == '8')).all()
+
+    if incomechannels != []:
+        for g in incomechannels: 
+            i_list.append({
+                'id': g.id,
+                'name': g.name,
+                'monthly_earning': g.monthly_earning,
+                'frequency': g.frequency,
+                'date': g.date
+                })
+
+    return jsonify(income=i_list)
+    
     
 def rollover(item): #runs for at the end of the month
     #target_year = request.form.get('year')
