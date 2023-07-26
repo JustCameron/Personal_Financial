@@ -554,6 +554,9 @@ def send_splits():
             #also would have to remove it from the table at the end of month den.
     #:if the user has an increase meds there movements
     #at least have in settings to set their default ratio wants/needs/savings.
+    #Notification for a monthly payment
+    #recommendation value be close to the original if they dont find a given user....cuz the user 1 rn recommendation kinda ugly
+    #to lower
 
 
 @app.route('/month/data',methods=['POST']) #get from db expense list and income list.
@@ -639,33 +642,47 @@ def test():
     print(access_token)
     return jsonify({'access_token': access_token})
     
-def rollover(): #runs for at the end of the month
+def rollover(item): #runs for at the end of the month
     #target_year = request.form.get('year')
     #target_month = request.form.get('month')
     global user_id
     target_year = 2023
     target_month = 7
     user_id = 2 #used for testing...remove
-    e_list = []
+    roll_list = []
 
-
-    expenses = db.session.query(ExpenseList).filter(and_(
-        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
-        extract('month', ExpenseList.date) == target_month),ExpenseList.frequency == 'Monthly').all()
-    if expenses != []:
-        for g in expenses: 
-                e_list.append({
+    if item == 'expense':
+        expenses = db.session.query(ExpenseList).filter(and_(
+            ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+            extract('month', ExpenseList.date) == target_month),ExpenseList.frequency == 'Monthly').all()
+        if expenses != []:
+            for g in expenses: 
+                    roll_list.append({
+                        'id': g.id,
+                        'name': g.name,
+                        'cost': g.cost,
+                        'tier': g.tier,
+                        'expense_type': g.expense_type,
+                        'frequency': g.frequency,
+                        'date': g.date
+                            })
+            #also create a table that allows user to choose if they want to rollover or not
+    else:
+        incomechannels = db.session.query(IncomeChannel).filter(and_(
+            IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == target_year,
+            extract('month', IncomeChannel.date) == target_month),IncomeChannel.frequency == 'Monthly').all()
+        if incomechannels != []:
+            for g in incomechannels: 
+                roll_list.append({
                     'id': g.id,
                     'name': g.name,
-                    'cost': g.cost,
-                    'tier': g.tier,
-                    'expense_type': g.expense_type,
+                    'monthly_earning': g.monthly_earning,
                     'frequency': g.frequency,
                     'date': g.date
-                            })
-        #also create a table that allows user to choose if they want to rollover or not
+                })
+
     #print(expenses)
-    for j in e_list:
+    for j in roll_list:
         #print(j['date'])
 
         # Convert the timestamps to datetime objects
@@ -674,10 +691,33 @@ def rollover(): #runs for at the end of the month
         # Add one month to each datetime object
         j['date'] = (datetime_objects + timedelta(days=30)).replace(day=1) 
 
-    return jsonify(exp=e_list)
-
-# def tier_recommendations(): #work  on now
-#     expenses = db.session.query(ExpenseList).filter(and_(
-#         ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
-#         extract('month', ExpenseList.date) == target_month),ExpenseList.frequency == 'Monthly').all()
+        #Add user to expense to next month
+        if item == 'expense':
+            newExpense = ExpenseList(j['name'],j['cost'],j['tier'],j['expense_type'],j['frequency'],j['date'],user_id)
+            db.session.add(newExpense)
+            db.session.commit()
+        else:
+            newIncomeChannel = IncomeChannel(j['name'],j['monthly_earning'],j['frequency'],j['date'],user_id)
+            db.session.add(newIncomeChannel)
+            db.session.commit() 
+        
     
+    #add expense to next5 month.
+    return jsonify(exp=roll_list)
+
+def reduce_recommendation(): #work  on now
+    target_year = 2023
+    target_month = 7
+    
+    expenses=get_expenses(target_month,target_year)
+    #for 
+
+    
+
+
+
+#Savings to goal
+#Features to add to the system in the next
+#Recommend closely to value 
+#Cap being 700K
+#recommend 60% 40% for a goal

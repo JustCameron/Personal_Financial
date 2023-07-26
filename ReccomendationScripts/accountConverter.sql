@@ -47,9 +47,9 @@ WITH income_summary AS (
           current_balance,
           monthly_income,
           monthly_expenses,
-          ROUND(wants / monthly_expenses * 100, 2) AS wants_percentage,
-          ROUND(needs / monthly_expenses * 100, 2) AS needs_percentage,
-          ROUND((100 - (wants / monthly_expenses * 100 + needs / monthly_expenses * 100)), 2) AS savings,
+          ROUND(wants / monthly_income * 100, 2) AS wants_percentage,
+    	  ROUND(needs / monthly_income * 100, 2) AS needs_percentage,
+    	  ROUND(((monthly_income - monthly_expenses) / monthly_income) * 100, 2) AS savings,
           ROUND((monthly_income - LAG(monthly_income, 1, monthly_income) 
           OVER (PARTITION BY income_and_expenses.acc_id ORDER BY month)) /
           LAG(monthly_income, 1, monthly_income) OVER (PARTITION BY income_and_expenses.acc_id ORDER BY month) * 100, 2) AS increase_decrease,

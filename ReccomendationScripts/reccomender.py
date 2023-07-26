@@ -40,7 +40,7 @@ def recommend(refvec1,vec2):
     global df
     indx=[]
     Monthly_Income=refvec1["Monthly_Income"] # user monthly income
-    Monthly_Expense=refvec1["Monthly_Income"] #user monthly expense
+    Monthly_Expense=refvec1["Monthly_Expense"] #user monthly expense
     for index,row in vec2.iterrows():
         if  compare(row["Monthly_Income"],int(Monthly_Income)) and compare(row["Monthly_Expense"],int(Monthly_Expense)): # and row["Budget_Increase"]>0 :
             indx.append(index)
