@@ -5,6 +5,7 @@ import 'dart:developer';
 import 'dart:math';
 import 'dart:ui';
 import 'package:collection/collection.dart';
+import 'package:intl/intl.dart';
 import 'package:pie_chart/pie_chart.dart' as pc;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -140,6 +141,7 @@ class MyAppState extends ChangeNotifier {
     color: Colors.blueGrey,
   );
   //Miscs
+    var createSpace = 0; // used for login to keep things in bound
   double currExpCost = 0.00;
   double currIncEarn = 0.00;
   var currExpName = "";
@@ -210,6 +212,11 @@ class MyAppState extends ChangeNotifier {
     // notifyListeners();
     return currIncName;
   }
+    // GET CURRENT MONTH
+  String returnMonth(DateTime date) {
+    return new DateFormat.MMMM().format(date);
+  }
+  
 }
 class MyHomePage extends StatefulWidget {
   @override
@@ -225,8 +232,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
     Widget loginpage;
     Widget imagepage;
+
     loginpage = LoginPage();
     imagepage = ImagePage();
+
     return Row(
         children: <Widget>[
           Expanded( //Split page
@@ -258,9 +267,16 @@ class _LoginPageState extends State<LoginPage> {
     var appState = context.watch<MyAppState>();
     Widget page;
 
+    // USER PASSWORD AND EMAIL INPUT GETTERS
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+
+    final emailformKey = GlobalKey<FormState>();
+    final passwordformKey = GlobalKey<FormState>();
 
     return Scaffold(
-      body: Column(
+      body: SingleChildScrollView(
+        child: Column(
         children: [
 
           SizedBox(height: 10,), //Adds a bit of space between top bar to image
@@ -340,7 +356,24 @@ class _LoginPageState extends State<LoginPage> {
               top: 0,
               bottom: 20,
             ),
-            child: TextField(
+              child: Form( // Form for validation
+                key: emailformKey,
+                child: TextFormField(
+                  validator: (value){ // Value = What the user inputs
+                    if (value!.isEmpty) {
+                      return 'Email cannot be empty'; // Send this back as Error
+                    }
+                    else if(!value.contains('@') || !value.contains('.')){ // If there is no number in password
+                      return 'Please enter a valid email address. E.g. example@example.com';
+                    }
+                    return null; // If everything is valid, send back 'null' meaning no errors
+                  },
+                  onChanged: (newValue) { // Validate in realtime
+                    emailformKey.currentState!.validate();
+                  },
+
+                  controller: emailController, // For Jon
+                  
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
                 floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
@@ -355,6 +388,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+        ),
 
 
           Padding(          // The text and padding between Password and Password Text Field
@@ -380,9 +414,28 @@ class _LoginPageState extends State<LoginPage> {
               top: 0,
               bottom: 0,
             ),
-            child: TextField(
+              child: Form( // Form for validation
+                key: passwordformKey,
+                child: TextFormField(
+                  validator: (value){ // Value = What the user inputs
+                    if (value!.isEmpty) {
+                      return 'Password cannot be empty'; // Send this back as Error
+                    }
+                    else if(num.tryParse(value.replaceAll(RegExp(r'[^0-9,.]'), '')) == null){ // If there is no number in password
+                      return 'Password must contain a number';
+                    }
+                    return null; // If everything is valid, send back 'null' meaning no errors
+                  },
+                  onChanged: (newValue) { // Validate in realtime
+                    passwordformKey.currentState!.validate();
+                  },
+
+                  controller: passwordController, // For Jon
+
               obscureText: true, //Adds the Asteriks for Password confidentiality
               decoration: InputDecoration(
+                prefixIcon: Icon(Icons.lock_open, color: Colors.grey),
+              
                 border: OutlineInputBorder(),
                 floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
                 labelText: 'Password',
@@ -396,6 +449,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+        ),
 
           Padding(                          //Remember Me and Forgot Password
             padding: const EdgeInsets.only(
@@ -673,10 +727,20 @@ class _LoginPageState extends State<LoginPage> {
 
                   print('Splits OutsideLoop: ${appState.recommendedSavingsPercentage}');
 
-                  Navigator.push(
+                  // This is the Error Handling Jon
+                  if (!emailformKey.currentState!.validate()) { // Checks if Email is Valid, then does something
+                    appState.createSpace = 1; // I use this later just to make some space for errors
+                  }
+                  if (!passwordformKey.currentState!.validate()) { // Checks if Password is Valid, then does something
+                    appState.createSpace = 1; // I use this later just to make some space for errors
+                  }
+                  // If Email and Password are valid, Login
+                  if (emailformKey.currentState!.validate() && passwordformKey.currentState!.validate()){
+                    Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
-                  );
+                    );
+                  }
                 }, //OnPressedClosure
                 child: Text('Login')),
             ),
@@ -774,9 +838,12 @@ class _LoginPageState extends State<LoginPage> {
 
             ),
           ),
+          if (appState.createSpace == 1) // Create extra space for error messages
+              SizedBox(height: 40,)
 
         ],
       ),
+    ),
     );
     
   }
@@ -1356,6 +1423,9 @@ class _DashboardPageState extends State<DashboardPage> {
     late Icon incomeFrequencyIcon;
     late String type;
 
+    // Get current month in text format, e.g. 'April' 'June' 'July' 
+    String currentMonth = appState.returnMonth(DateTime.now());
+
     // To check if the expense type is want or need (used in Add Expense)
     Icon want = Icon(
       Icons.store_mall_directory,
@@ -1428,7 +1498,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 child: Align(
                   alignment: Alignment.topLeft,
-                  child: Text("Information",
+                  child: Text("Status for $currentMonth",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -5363,12 +5433,24 @@ class _BudgetPageState extends State<BudgetPage> {
       
             //Divider(),
       
+            Row(
+              children: [
+                Expanded(child: Text(""),), // just to align stuff
+
+                // NEXT MONTH BUTTON
+                IconButton(
+                  onPressed: (){}, // Code to go to previous month goes here
+
+                  icon: Icon(Icons.arrow_circle_left_outlined),
+                  selectedIcon: Icon(Icons.arrow_circle_left),
+                  ),
+
             Padding( // DATE HEADING
               padding: const EdgeInsets.only(
                 left: 0,
-                right: 70,
-                top: 10,
-                bottom: 0,
+                right: 0,
+                top: 0,
+                bottom: 5,
               ),
               child: Align(
                 alignment: Alignment.center,
@@ -5382,7 +5464,21 @@ class _BudgetPageState extends State<BudgetPage> {
                 ),
               ),
             ),
-      
+
+            // PREVIOUS MONTH BUTTON
+            Padding(
+              padding: const EdgeInsets.only(right:70),
+              child: IconButton(
+                onPressed: (){}, // Code to go to next month goes here
+
+                icon: Icon(Icons.arrow_circle_right_outlined),
+                selectedIcon: Icon(Icons.arrow_circle_right),
+                ),
+            ),
+              Expanded(child: Text("")), // just to align stuff
+            ],
+          ),
+        
             Padding( // REMAINING HEADING
               padding: const EdgeInsets.only(
                 left: 0,
@@ -5605,7 +5701,7 @@ class _BudgetPageState extends State<BudgetPage> {
                         ),
 
                         // HELP BUTTON
-                        TextButton( // Expense Button To Delete
+                        TextButton( 
                           onPressed: () {
                             setState(() {
                               // Should bring up table with expenses recommended to remove
@@ -5896,7 +5992,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                         child: Text('Income for $currentMonth'),
                                       )),
                                       Expanded(child: Padding( //Received Text
-                                        padding: const EdgeInsets.only(left: 132, top: 10, right: 10),
+                                        padding: const EdgeInsets.only(left: 128, top: 10, right: 10),
                                         child: Text('Received'),
                                       )),
                                     ],
@@ -5920,7 +6016,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                           Expanded(
                                             child: Padding(
                                             padding: const EdgeInsets.only(
-                                              left: 315,
+                                              left: 310,
                                             ),
                                             child: Icon(Icons.attach_money_rounded, 
                                             //color: Colors.deepOrangeAccent,
@@ -6069,5 +6165,4 @@ class DataConnection {
   }
 
 }
-
 
