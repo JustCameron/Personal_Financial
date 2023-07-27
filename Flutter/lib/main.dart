@@ -158,6 +158,8 @@ class MyAppState extends ChangeNotifier {
   double recommendedNeedsPercentage = 0.00;
   double recommendedSavingsPercentage = 0.00;
 
+  double increaseDecreasePercent = 0.00;
+
 
   //Stuff For Jon
   double wantTotal = 0.00; // Keep track of total spent on wants - For Jon
@@ -949,6 +951,7 @@ class _MainPageState extends State<MainPage> {
   int chosenIndex = 0;
   @override
   Widget build(BuildContext context) {
+  var appState = context.watch<MyAppState>();
   Widget? page;
   switch (chosenIndex) {
     case 0:
@@ -1014,9 +1017,16 @@ class _MainPageState extends State<MainPage> {
                 onDestinationSelected: (value) { // When an option is selected do something
                   if (value == 4){ //If user selects Logout, first page starts at 0 remember
                     // LOGS OUT USER   //idk if clearing of flutter lists need to be done or nah
-                    //clearAllLists();
+                    appState.clearAllLists();
                     final leave= {'Left': 'Logout'};                                
                     final leaved= MyApp.of(context).flaskConnect.sendData('logout', leave);
+                  
+                  if (value == 1){
+                    // if (appState.currMonth != appState.repMonth)
+                    // {
+                    //   chosenIndex = value;
+                    // }
+                  }
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => MyHomePage()),
@@ -5494,6 +5504,8 @@ class _BudgetPageState extends State<BudgetPage> {
           appState.wantPercentage = appState.wantTotal / appState.income;
           appState.needPercentage = appState.needTotal / appState.income;
           appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
+
+         
         }
       }
       //});  //end first populate
@@ -5527,6 +5539,12 @@ class _BudgetPageState extends State<BudgetPage> {
           appState.recommendedWantsPercentage = rwants;
           appState.recommendedNeedsPercentage = rneeds;
           appState.recommendedSavingsPercentage = rsavings;
+
+          // appState.wantPercentage = bwants;
+          // appState.needPercentage = bneeds;
+          // appState.savingsPercentage = bsavings; change
+
+          appState.increaseDecreasePercent = increasedecrease;
         }} //End for and if 
       //});
   }
@@ -5552,7 +5570,7 @@ class _BudgetPageState extends State<BudgetPage> {
     //place this @ function maybe? cuz it runs in the for loop not outside it
     //is the solution adding it to a list in appstate and searching for it here?
     
-    //idr dis atall
+   
     var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList]);
 
     // Get Month:
@@ -5705,6 +5723,7 @@ class _BudgetPageState extends State<BudgetPage> {
                   //onPressed: (){
                     appState.clearAllLists();
                     appState.repMonth --;
+                    monthNumber = '${appState.repMonth}';
                     final sendtopop= {'month': '${appState.repMonth}', 'year': '2023'};                                
                     final monthdata= await  MyApp.of(context).flaskConnect.sendData('month/data', sendtopop);
                     setState(() {
@@ -5743,6 +5762,7 @@ class _BudgetPageState extends State<BudgetPage> {
                 onPressed: ()async {
                   appState.clearAllLists();
                   appState.repMonth++;
+                  monthNumber = '${appState.repMonth}';
                   final sendtopop= {'month': '${appState.repMonth}', 'year': '2023'};                                
                   final monthdata= await  MyApp.of(context).flaskConnect.sendData('month/data', sendtopop);
                   setState(() {

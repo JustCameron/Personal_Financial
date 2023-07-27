@@ -11,7 +11,7 @@ from flask import render_template, request, redirect, url_for, flash, session, a
 from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport
 from werkzeug.utils import secure_filename
 from decimal import Decimal
-from datetime import timedelta
+from datetime import timedelta, date  #change
 import datetime
 from werkzeug.security import check_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
@@ -27,7 +27,8 @@ from flask_jwt_extended import create_access_token, jwt_required,get_jwt_identit
 # Routing for your application.
 ###
 
-user_id = 0
+user_id = 0  #set back to 0 after testing
+demo = True
 
 @app.route('/login', methods=['POST', 'GET'])
 def login(): 
@@ -70,6 +71,9 @@ def load_user(id):
 def logout():
     global user_id
     if (request.method=='POST'):
+        user = db.session.execute(db.select(Account).filter_by(id=user_id)).scalar()
+        user.last_login_date = datetime.datetime.now()
+        db.session.commit()   
         print("Logged out User:", user_id)
         user_id = 0
         print(user_id)
@@ -449,18 +453,20 @@ def recommend_ratios(users):  #dictionary passes here
         return (50.00,30.00,20.00)
 
 
-@app.route('/recommendation/report',methods=['GET']) 
-#@jwt_required()
-def recommendation():
+#@app.route('/recommendation/report',methods=['GET']) 
+#@jwt_required() remove
+def recommendation(): #how to simulate this?
     global user_id #remove l8r
     users=[]
     with open('ReccomendationScripts\\accountConverter.sql', 'r') as file:
         sql_script = file.read()
-        with app.app_context():
-            usertbl= db.session.execute(text(sql_script)).fetchall() #places user info into AllUsersData format
+        with app.app_context(): #this runs for all users
+            usertbl = db.session.execute(text(sql_script), {'acc_id': user_id}).fetchall() #places user info into AllUsersData format
+
     if usertbl: 
         print(usertbl)
-        for j in usertbl:  ##This has more than 1 month.
+        #last_value = usertbl[-1]
+        for j in usertbl: 
             #month needs to be changed.
             user_month_data = AllUsersData(j.acc_id,j.month,float(j.beginning_balancee),float(j.monthly_income),
                                           float(j.monthly_expenses),float(j.current_balance),float(j.wants_percentage),
@@ -505,12 +511,15 @@ def recommendation():
     }
 
     send_to_rec_table = RecommendationReport(users['Account_ID'],users['Month'],users['Wants%'],users['Needs%'],users['Savings%'],splits['rwants'],splits['rneeds'],splits['rsavings'],users['Increase_Decrease'])
+    userAcc= db.session.execute(db.select(Account).filter_by(id=user_id)).scalar()   
+    userAcc.beginning_balance = users['Current_Balance']
+
     db.session.add(send_to_rec_table) #Adds rec splits + current splits to DB
     db.session.commit() 
 
 
     # Return a JSON response with the recommendation data
-    return jsonify(splits)
+    #return jsonify(splits)
     
     #We can have a section that would allow the user to pick their ratio. This would run the reccomend() function,
         #with the percentages as the parameters (so we need to figure how to add the record from the function's param)
@@ -519,17 +528,19 @@ def recommendation():
 
 
 @app.route('/splits',methods=['GET']) #get from db RecommendationReport Cannot send this @start.because data will be different for each month in reccomendation section.
-@jwt_required()
+@jwt_required() #remove function....not needed no more as u cant get current splits, so change to last months
 def send_splits(): 
-    time.sleep(2)
+    time.sleep(3) #try removing
+    new_month_update() #test
     global user_id
-    recList = []
+    recList = [] #get last month splits.
     recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
     print('populate user_id',user_id)
     print(recSplits)
     
+    #how to make 
     if recSplits != []:
-        
+        #recSplits = recSplits[-1]
         for rec in recSplits: 
                 recList.append({
             'id': rec.id,
@@ -541,8 +552,8 @@ def send_splits():
                 'rwants': f'{round(float(rec.rwants), 2)}',  
                 'rneeds': f'{round(float(rec.rneeds), 2)}', 
                 'rsavings': f'{round(float(rec.rsavings), 2)}',  
-                #'increase_decrease': f'{round(float(rec.increase_decrease), 2)}', #add values to table first #error mon. fix
-                'increase_decrease': '20.00'
+                'increase_decrease': f'{round(float(rec.increase_decrease), 2)}'                 
+                #'increase_decrease': '20.00'
                             })
                 print(recList)
     return jsonify(splits=recList)
@@ -650,63 +661,49 @@ def month_data():
 
 @app.route('/test', methods=['GET'])
 def test():
-    i_list=[]
-    mad = '8'
-    incomechannels = db.session.query(IncomeChannel).filter(and_(
-        IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == '2023',
-        extract('month', IncomeChannel.date) == '8')).all()
+    return recommendation()
+    
+    
+def rollover(): #runs for at the end of the month
+    #target_year = request.form.get('year')
+    #target_month = request.form.get('month')
+    global user_id
+    # target_year = 2023
+    # target_month = 7 
+    target_month,target_year = get_month_year(datetime.datetime.now())
+    target_month-=1
+    user_id = 2 #used for testing...remove
+    roll_list = []
 
+    #if item == 'expense':
+    expenses = db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+        extract('month', ExpenseList.date) == target_month),ExpenseList.frequency == 'Monthly').all()
+    if expenses != []:
+        for g in expenses: 
+                roll_list.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'cost': g.cost,
+                    'tier': g.tier,
+                    'expense_type': g.expense_type,
+                    'frequency': g.frequency,
+                    'date': g.date
+                        })
+            #also create a table that allows user to choose if they want to rollover or not
+    #else:
+    incomechannels = db.session.query(IncomeChannel).filter(and_(
+        IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == target_year,
+        extract('month', IncomeChannel.date) == target_month),IncomeChannel.frequency == 'Monthly').all()
     if incomechannels != []:
         for g in incomechannels: 
-            i_list.append({
+            roll_list.append({
                 'id': g.id,
                 'name': g.name,
                 'monthly_earning': g.monthly_earning,
                 'frequency': g.frequency,
                 'date': g.date
-                })
-
-    return jsonify(income=i_list)
-    
-    
-def rollover(item): #runs for at the end of the month
-    #target_year = request.form.get('year')
-    #target_month = request.form.get('month')
-    global user_id
-    target_year = 2023
-    target_month = 7
-    user_id = 2 #used for testing...remove
-    roll_list = []
-
-    if item == 'expense':
-        expenses = db.session.query(ExpenseList).filter(and_(
-            ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
-            extract('month', ExpenseList.date) == target_month),ExpenseList.frequency == 'Monthly').all()
-        if expenses != []:
-            for g in expenses: 
-                    roll_list.append({
-                        'id': g.id,
-                        'name': g.name,
-                        'cost': g.cost,
-                        'tier': g.tier,
-                        'expense_type': g.expense_type,
-                        'frequency': g.frequency,
-                        'date': g.date
-                            })
-            #also create a table that allows user to choose if they want to rollover or not
-    else:
-        incomechannels = db.session.query(IncomeChannel).filter(and_(
-            IncomeChannel.acc_id == user_id,extract('year', IncomeChannel.date) == target_year,
-            extract('month', IncomeChannel.date) == target_month),IncomeChannel.frequency == 'Monthly').all()
-        if incomechannels != []:
-            for g in incomechannels: 
-                roll_list.append({
-                    'id': g.id,
-                    'name': g.name,
-                    'monthly_earning': g.monthly_earning,
-                    'frequency': g.frequency,
-                    'date': g.date
-                })
+            })
 
     #print(expenses)
     for j in roll_list:
@@ -719,15 +716,15 @@ def rollover(item): #runs for at the end of the month
         j['date'] = (datetime_objects + timedelta(days=30)).replace(day=1) 
 
         #Add user to expense to next month
-        if item == 'expense':
-            newExpense = ExpenseList(j['name'],j['cost'],j['tier'],j['expense_type'],j['frequency'],j['date'],user_id)
-            db.session.add(newExpense)
-            db.session.commit()
-        else:
-            newIncomeChannel = IncomeChannel(j['name'],j['monthly_earning'],j['frequency'],j['date'],user_id)
-            db.session.add(newIncomeChannel)
-            db.session.commit() 
-        
+        # if item == 'expense':
+        newExpense = ExpenseList(j['name'],j['cost'],j['tier'],j['expense_type'],j['frequency'],j['date'],user_id)
+        db.session.add(newExpense)
+        # db.session.commit()
+    # else:
+        newIncomeChannel = IncomeChannel(j['name'],j['monthly_earning'],j['frequency'],j['date'],user_id)
+        db.session.add(newIncomeChannel)
+        db.session.commit() 
+    
     
     #add expense to next5 month.
     return jsonify(exp=roll_list)
@@ -748,3 +745,36 @@ def reduce_recommendation(): #work  on now
 #Recommend closely to value 
 #Cap being 700K
 #recommend 60% 40% for a goal
+
+
+def new_month_update():  #Runs @login but does update @the start of a new month 
+    global user_id
+    #should run before recommended splits are sent to the DB
+    user = db.session.execute(db.select(Account).filter_by(id=user_id)).scalar()   
+    # start_month,start_year = get_month_year(user.signup_date)
+    # current_month,current_year = get_month_year(datetime.datetime.now()) 
+    now=datetime.datetime.now()
+    # Get the current date
+    current_date = date.today()
+
+    # Extract the day from the current date
+    current_day = current_date.day
+    if not demo:
+        if current_day==1: #check the current date yzm ##This runs less when comparing other if statement
+            # if (current_year != start_year) and (current_month != start_month):
+            if now-user.signup_date >= 30:  #can change value change to something different
+                # can send a text ofer to flutter, theres not enought time given to do calculations..
+                recommendation()
+                rollover()
+                #reduce_recommendation()
+
+                #return [] #change
+            else:
+                return 0 #tell the user dem cah see nthn or send to flutter an empty list
+        #return []
+    else:
+        recommendation()
+        rollover()
+        #reduce_recommendation()
+            
+    #beginning_balance = db.Column(db.Numeric(10, 2))

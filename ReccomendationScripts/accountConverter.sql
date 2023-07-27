@@ -57,4 +57,6 @@ WITH income_summary AS (
   		  goals_summary.max_goal
 	  FROM income_and_expenses
 	  JOIN goals_summary ON income_and_expenses.acc_id = goals_summary.acc_id
-      ORDER BY acc_id, month;
+	  WHERE income_and_expenses.acc_id = :acc_id
+      ORDER BY acc_id, month DESC
+	  FETCH FIRST 1 ROW ONLY;
