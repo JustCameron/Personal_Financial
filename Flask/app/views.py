@@ -35,6 +35,7 @@ def login():
     if (request.method=='POST'):
         #add get credentials from flutter
         email = request.form.get('email')
+        email = email.lower()
         print(email)
         password = request.form.get('password')
 
@@ -558,14 +559,14 @@ def send_splits():
     #at least have in settings to set their default ratio wants/needs/savings.
     #Notification for a monthly payment
     #recommendation value be close to the original if they dont find a given user....cuz the user 1 rn recommendation kinda ugly
-    #tolower() input values for login
+    #tolower() input values for login //done
     #have a threshold for expenses that +higher than max value (change to 700k)
 
 
 @app.route('/month/data',methods=['POST']) #get from db expense list and income list.
 #@jwt_required()
 def month_data():
-    #time.sleep(2)
+    time.sleep(1)
     global user_id
     #e_list = []
     #i_list = []

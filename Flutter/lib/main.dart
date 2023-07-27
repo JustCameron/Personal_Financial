@@ -235,7 +235,7 @@ class MyAppState extends ChangeNotifier {
     expenseidList.clear();
     incomeidList.clear();
     balance=0;
-    //spent=0;
+    spent=0;
     //income=0;
     //beginbalance=0;
   }
@@ -289,6 +289,245 @@ class _LoginPageState extends State<LoginPage> {
     var appState = context.watch<MyAppState>();
     Widget page;
     
+    Future<void> handleLogin(credentials,DataConnection flaskConnect) async{
+          // Show loading indicator before the API call
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            },
+          );
+          final sentCredentials= await MyApp.of(context).flaskConnect.sendData('login', credentials);
+          var data = sentCredentials;
+          //sentCredentials.then((data){   
+            if (data['message'] == 'Success'){
+              String tkn = data['access_token'];
+              MyApp.of(context).flaskConnect.saveTokenToSharedPreferences(tkn);
+              
+              //Gets the current month and year to use for dashboard switching and reprt
+              appState.currMonth = data['month'];
+              appState.repMonth = data['month'];
+              
+              appState.currYear = data['year'];
+              appState.repYear = data['year'];
+
+              //gets staring balance of user
+              double bBalance = double.parse(data['beg_balance']);                
+              //print("The ID sent $id");
+              appState.clearAllLists();
+              appState.balance += bBalance; //Dis correct?
+              appState.beginbalance += bBalance; //would change each month
+              print("The Beginning balnce sent ${appState.beginbalance}");
+              appState.valid_user =true;
+          }
+          else{
+                  
+          // Hide the loading indicator in case of an error
+          Navigator.of(context).pop();
+          }
+          //});
+          
+            
+          
+          if (appState.valid_user==true){
+          //Recieves data from database and adds to respective lists
+          var populate = await MyApp.of(context).flaskConnect.fetchData('populate');
+          var data2 = populate;
+          
+          //populate.then((data){
+            var expenseList = data2['expense'];
+            print('ExpenseList: $expenseList');
+            if (expenseList != []){
+              for (var expense in expenseList) {
+                var id = expense['id'];
+                var name = expense['name'];   
+                var cost = num.parse(expense['cost']); 
+                var tier = expense['tier'];               
+                var expenseType = expense['expense_type']; 
+                var frequency = expense['frequency']; 
+                var date = expense['date']; 
+
+                appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
+                appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
+                appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+                
+                //CALCULATION: To change
+                //Create colunmn for balance and add value here. WYUEWI
+                appState.balance -= cost; // subtract expense from balance
+                appState.spent += cost; // add expense cost to spent
+                
+                  //Different WANT/NEED Symbols
+                  if (expenseType == "Want") {
+                    appState.wantTotal += cost; //To change
+                    Padding(
+                      padding: const EdgeInsets.only(left: 5),
+                      child: appState.wantneedIcon = Icon(
+                        Icons.store_mall_directory,
+                        color: Colors.blueAccent,
+                      ),
+                    );
+                  
+                  } else {
+                    appState.needTotal += cost;
+                    Padding(
+                      padding: const EdgeInsets.only(left: 5),
+                      child: appState.wantneedIcon = Icon(
+                        Icons.house,
+                        color: Colors.green
+                        ),
+                    );
+                  }
+                appState.type = appState.wantneedIcon;
+                appState.expenseTypeList.add(appState.type);
+
+                //Different EXPENSE RANKINGS Symbols
+                if (tier == "T1") {
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5, top: 3),
+                    child: appState.rankIcon = Icon(
+                      Icons.looks_one,
+                      color: Color.fromARGB(255, 180, 166, 35),
+                    ),
+                  );                        
+                } 
+                else if (tier == "T2") {
+                    Padding(
+                    padding: const EdgeInsets.only(left: 5, top: 3),
+                    child: appState.rankIcon = Icon(
+                      Icons.looks_two,
+                      color: Colors.orange
+                      ),
+                  );
+                } 
+                else if (tier == "T3") {
+                      Padding(
+                      padding: const EdgeInsets.only(left: 5, top: 3),
+                      child: appState.rankIcon = Icon(
+                      Icons.looks_3,
+                      color: Colors.red
+                      ),
+                      );
+                }
+                appState.rankIcon = appState.rankIcon;
+                appState.rankList.add(appState.rankIcon);
+
+                if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5, top: 3),
+                    child: appState.frequencyIcon = Icon(
+                      Icons.one_x_mobiledata_outlined,
+                      color: Colors.blueGrey,
+                    ),
+                  );
+                  }
+                else{ 
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5),
+                    child: appState.frequencyIcon = Icon(
+                      Icons.calendar_month,
+                      color: Colors.blueGrey
+                      ),
+                  );
+                }
+                appState.expenseFreqList.add(appState.frequencyIcon);
+
+
+
+
+            }//end for 
+          }//end if-empty 
+            
+
+            var incomeList = data2['income'];
+            print('IncomeList: $incomeList');
+            if(incomeList != []){
+              for (var income in incomeList) {
+                var id = income['id'];
+                var name = income['name'];   
+                var monthlyEarning = num.parse(income['monthly_earning']); 
+                var frequency = income['frequency']; 
+                var date = income['date']; 
+
+                appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
+                appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
+                appState.incomeidList.add((id.toString()));
+
+                //CALCULATION: To change
+                appState.balance += monthlyEarning; // adds income to remaining balance
+                appState.income += monthlyEarning; // add income value to income
+                
+                if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5, top: 3),
+                    child: appState.incomeFrequencyIcon = Icon(
+                      Icons.one_x_mobiledata_outlined,
+                      color: Colors.blueGrey,
+                    ),
+                  );
+                  }
+                else{ 
+                  Padding(
+                    padding: const EdgeInsets.only(left: 5),
+                    child: appState.incomeFrequencyIcon = Icon(
+                      Icons.calendar_month,
+                      color: Colors.blueGrey
+                      ),
+                  );
+                }
+                appState.incomeFreqList.add(appState.incomeFrequencyIcon);
+                // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
+                appState.wantPercentage = appState.wantTotal / appState.income;
+                appState.needPercentage = appState.needTotal / appState.income;
+                appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
+              }
+            }
+          //});  //end first populate
+
+          double bwants = 0.00;
+          double bneeds = 0.00; 
+          double bsavings = 0.00;
+          double rwants = 0.00;
+          double rneeds = 0.00;
+          double rsavings = 0.00;
+          double increasedecrease = 0.00; 
+          var currDate = '';
+          
+          var recPopulate = await MyApp.of(context).flaskConnect.fetchData('splits');
+          
+          //recPopulate.then((data){
+            var data3 = recPopulate;
+          
+            var splitList = data3['splits'];
+            //print('Message: $splitList');
+            if (splitList != []){
+              for (var splits in splitList) {
+              
+                bwants = double.parse(splits['wants']); 
+                bneeds = double.parse(splits['needs']); 
+                bsavings = double.parse(splits['savings']); 
+                rwants = double.parse(splits['rwants']); 
+                rneeds = double.parse(splits['rneeds']); 
+                rsavings = double.parse(splits['rsavings']);
+                increasedecrease = double.parse(splits['increase_decrease']); 
+                currDate = splits['date']; 
+
+                print('Splits in loop: $rwants');
+                appState.recommendedWantsPercentage = rwants;
+                appState.recommendedNeedsPercentage = rneeds;
+                appState.recommendedSavingsPercentage = rsavings;
+              }} //End for and if 
+          //});
+
+          print('Splits OutsideLoop: ${appState.recommendedSavingsPercentage}');
+          }
+        Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
+        );
+    }
 
     // USER PASSWORD AND EMAIL INPUT GETTERS
     final emailController = TextEditingController();
@@ -562,223 +801,9 @@ class _LoginPageState extends State<LoginPage> {
                   if (emailformKey.currentState!.validate() && passwordformKey.currentState!.validate()){
                        //var login = MyApp.of(context).flaskConnect.fetchData('login');
                   //final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};
-              
-                  final sendCredentials= {'email': emailController.text, 'password': passwordController.text};
-                  final sentCredentials= MyApp.of(context).flaskConnect.sendData('login', sendCredentials);
-                  sentCredentials.then((data){   
-                    if (data['message'] == 'Success'){
-                       String tkn = data['access_token'];
-                      MyApp.of(context).flaskConnect.saveTokenToSharedPreferences(tkn);
-                      
-                      //Gets the current month and year to use for dashboard switching and reprt
-                      appState.currMonth = data['month'];
-                      appState.repMonth = data['month'];
-                      
-                      appState.currYear = data['year'];
-                      appState.repYear = data['year'];
-
-                      //gets staring balance of user
-                      double bBalance = double.parse(data['beg_balance']);                
-                      //print("The ID sent $id");
-                      appState.balance += bBalance; //Dis correct?
-                      appState.beginbalance += bBalance; //would change each month
-                      print("The Beginning balnce sent ${appState.beginbalance}");
-                      appState.valid_user =true;
-                    } 
-                  });
-                   
+                    final sendCredentials= {'email': emailController.text, 'password': passwordController.text};
+                    handleLogin(sendCredentials,MyApp.of(context).flaskConnect);
                   
-                  if (appState.valid_user==true){
-                  //Recieves data from database and adds to respective lists
-                  var populate = MyApp.of(context).flaskConnect.fetchData('populate');
-                  populate.then((data){
-                    var expenseList = data['expense'];
-                    print('ExpenseList: $expenseList');
-                    if (expenseList != []){
-                      for (var expense in expenseList) {
-                        var id = expense['id'];
-                        var name = expense['name'];   
-                        var cost = num.parse(expense['cost']); 
-                        var tier = expense['tier'];               
-                        var expenseType = expense['expense_type']; 
-                        var frequency = expense['frequency']; 
-                        var date = expense['date']; 
-
-                        appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
-                        appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
-                        appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
-                        
-                        //CALCULATION: To change
-                        //Create colunmn for balance and add value here. WYUEWI
-                        appState.balance -= cost; // subtract expense from balance
-                        appState.spent += cost; // add expense cost to spent
-                        
-                          //Different WANT/NEED Symbols
-                          if (expenseType == "Want") {
-                            appState.wantTotal += cost; //To change
-                            Padding(
-                              padding: const EdgeInsets.only(left: 5),
-                              child: appState.wantneedIcon = Icon(
-                                Icons.store_mall_directory,
-                                color: Colors.blueAccent,
-                              ),
-                            );
-                          
-                          } else {
-                            appState.needTotal += cost;
-                            Padding(
-                              padding: const EdgeInsets.only(left: 5),
-                              child: appState.wantneedIcon = Icon(
-                                Icons.house,
-                                color: Colors.green
-                                ),
-                            );
-                          }
-                        appState.type = appState.wantneedIcon;
-                        appState.expenseTypeList.add(appState.type);
-
-                        //Different EXPENSE RANKINGS Symbols
-                        if (tier == "T1") {
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5, top: 3),
-                            child: appState.rankIcon = Icon(
-                              Icons.looks_one,
-                              color: Color.fromARGB(255, 180, 166, 35),
-                            ),
-                          );                        
-                        } 
-                        else if (tier == "T2") {
-                            Padding(
-                            padding: const EdgeInsets.only(left: 5, top: 3),
-                            child: appState.rankIcon = Icon(
-                              Icons.looks_two,
-                              color: Colors.orange
-                              ),
-                          );
-                        } 
-                        else if (tier == "T3") {
-                              Padding(
-                              padding: const EdgeInsets.only(left: 5, top: 3),
-                              child: appState.rankIcon = Icon(
-                              Icons.looks_3,
-                              color: Colors.red
-                              ),
-                              );
-                        }
-                        appState.rankIcon = appState.rankIcon;
-                        appState.rankList.add(appState.rankIcon);
-
-                        if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5, top: 3),
-                            child: appState.frequencyIcon = Icon(
-                              Icons.one_x_mobiledata_outlined,
-                              color: Colors.blueGrey,
-                            ),
-                          );
-                          }
-                        else{ 
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5),
-                            child: appState.frequencyIcon = Icon(
-                              Icons.calendar_month,
-                              color: Colors.blueGrey
-                              ),
-                          );
-                        }
-                        appState.expenseFreqList.add(appState.frequencyIcon);
-
-
-
-
-                    }//end for 
-                  }//end if-empty 
-                    
-
-                    var incomeList = data['income'];
-                    print('IncomeList: $incomeList');
-                    if(incomeList != []){
-                      for (var income in incomeList) {
-                        var id = income['id'];
-                        var name = income['name'];   
-                        var monthlyEarning = num.parse(income['monthly_earning']); 
-                        var frequency = income['frequency']; 
-                        var date = income['date']; 
-
-                        appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
-                        appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
-                        appState.incomeidList.add((id.toString()));
-
-                        //CALCULATION: To change
-                        appState.balance += monthlyEarning; // adds income to remaining balance
-                        appState.income += monthlyEarning; // add income value to income
-                        
-                        if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5, top: 3),
-                            child: appState.incomeFrequencyIcon = Icon(
-                              Icons.one_x_mobiledata_outlined,
-                              color: Colors.blueGrey,
-                            ),
-                          );
-                          }
-                        else{ 
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5),
-                            child: appState.incomeFrequencyIcon = Icon(
-                              Icons.calendar_month,
-                              color: Colors.blueGrey
-                              ),
-                          );
-                        }
-                        appState.incomeFreqList.add(appState.incomeFrequencyIcon);
-                        // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
-                        appState.wantPercentage = appState.wantTotal / appState.income;
-                        appState.needPercentage = appState.needTotal / appState.income;
-                        appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
-                      }
-                    }
-                  });  //end first populate
-
-                  double bwants = 0.00;
-                  double bneeds = 0.00; 
-                  double bsavings = 0.00;
-                  double rwants = 0.00;
-                  double rneeds = 0.00;
-                  double rsavings = 0.00;
-                  double increasedecrease = 0.00; 
-                  var currDate = '';
-                  
-                  var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
-                  recPopulate.then((data){
-                    var splitList = data['splits'];
-                    //print('Message: $splitList');
-                    if (splitList != []){
-                      for (var splits in splitList) {
-                      
-                        bwants = double.parse(splits['wants']); 
-                        bneeds = double.parse(splits['needs']); 
-                        bsavings = double.parse(splits['savings']); 
-                        rwants = double.parse(splits['rwants']); 
-                        rneeds = double.parse(splits['rneeds']); 
-                        rsavings = double.parse(splits['rsavings']);
-                        increasedecrease = double.parse(splits['increase_decrease']); 
-                        currDate = splits['date']; 
-
-                        print('Splits in loop: $rwants');
-                        appState.recommendedWantsPercentage = rwants;
-                        appState.recommendedNeedsPercentage = rneeds;
-                        appState.recommendedSavingsPercentage = rsavings;
-                      }} //End for and if 
-                  });
-
-                  print('Splits OutsideLoop: ${appState.recommendedSavingsPercentage}');
-                
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
-                    );
-                  }
                 }//if valid_user 
                 else{ //invalid user
 
@@ -989,6 +1014,7 @@ class _MainPageState extends State<MainPage> {
                 onDestinationSelected: (value) { // When an option is selected do something
                   if (value == 4){ //If user selects Logout, first page starts at 0 remember
                     // LOGS OUT USER   //idk if clearing of flutter lists need to be done or nah
+                    //clearAllLists();
                     final leave= {'Left': 'Logout'};                                
                     final leaved= MyApp.of(context).flaskConnect.sendData('logout', leave);
                   Navigator.push(
@@ -2430,17 +2456,18 @@ class _DashboardPageState extends State<DashboardPage> {
                           width: 50,
                           height: 40,
                           child: IconButton(
-                            onPressed: (){
-                              setState(()  {
-                                // SENDS TO BACKEND
+                            onPressed: () async{
+                              // SENDS TO BACKEND
                                 final sendExpense= {'name': appState.expenseName.toString(), 'cost': appState.expenseCost.toStringAsFixed(2), 'tier': appState.ranks.toString(), 'expenseType': appState.wantORneedchoice.toString(), 'frequency': appState.expenseFreq.toString()};                                
-                                final sentExpense=  MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
-
-                                sentExpense.then((data){ var id = data['message']; 
-                                  print("The ID sent $id");
-                                  appState.expenseID = id.toString();
-                                  appState.expenseidList.add((appState.expenseID));
-                                });
+                                final sentExpense= await MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
+                                var data = sentExpense;
+                              setState((){
+                                //sentExpense.then((data){ 
+                                var id = data['message']; 
+                                print("The ID sent $id");
+                                appState.expenseID = id.toString();
+                                appState.expenseidList.add((appState.expenseID));
+                                //});
 
                                 // UPDATE ICONS
                                 appState.type = wantneedIcon;
@@ -2524,7 +2551,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                       ),
 
-                      //          INCOME LIST
+                      //   INCOME LIST
 
                       Padding(
                         padding: const EdgeInsets.only(
@@ -2988,18 +3015,20 @@ class _DashboardPageState extends State<DashboardPage> {
                           width: 50,
                           height: 40,
                           child: IconButton(
-                            onPressed: (){
-                              setState(() {
-                                          // SENT INCOME TO DB/BACKEND
+                            onPressed: () async{
+                              // SENT INCOME TO DB/BACKEND
                                 final sendIncomeChannel = {'name': appState.incomeName.toString(), 'monthly_earning': appState.incomeValue.toStringAsFixed(2),'frequency': appState.incomeFreq.toString()};           
-                                final sentIncomeChannel = MyApp.of(context).flaskConnect.sendData('incomeChannel/add', sendIncomeChannel);
+                                final sentIncomeChannel = await MyApp.of(context).flaskConnect.sendData('incomeChannel/add', sendIncomeChannel);
+                                var data2 = sentIncomeChannel;
+                              setState(() {
+                                //sentIncomeChannel.then((data){ 
+                                
+                                var id = data2['message']; 
+                                print("The ID sent $id");
+                                appState.incomeID = id.toString();
+                                appState.incomeidList.add((appState.incomeID));
 
-                                sentIncomeChannel.then((data){ var id = data['message']; 
-                                  print("The ID sent $id");
-                                  appState.incomeID = id.toString();
-                                  appState.incomeidList.add((appState.incomeID));
-
-                                });
+                                //});
 
                                 //UPDATE ICONS
                                 appState.incomeFrequencyIcon = incomeFrequencyIcon;
@@ -5315,160 +5344,159 @@ class _BudgetPageState extends State<BudgetPage> {
     var appState = context.watch<MyAppState>();
     var theme = Theme.of(context);
 
-    Future<void> getMonthData(month) async {
+    void getMonthData(monthdata) {
     //var populate = MyApp.of(context).flaskConnect.fetchData('month/data');
     // SENDS TO BACKEND
-      final sendtopop= {'month': '$month', 'year': '2023'};                                
-      final gotttopop=  MyApp.of(context).flaskConnect.sendData('month/data', sendtopop);
+      
+      var data = monthdata;
+      //gotttopop.then((data){
+      var expenseList = data['expense'];
+      print('ExpenseList: $expenseList');
+      if (expenseList != []){
+        for (var expense in expenseList) {
+          var id = expense['id'];
+          var name = expense['name'];   
+          var cost = num.parse(expense['cost']); 
+          var tier = expense['tier'];               
+          var expenseType = expense['expense_type']; 
+          var frequency = expense['frequency']; 
+          var date = expense['date']; 
 
-      gotttopop.then((data){
-        var expenseList = data['expense'];
-        print('ExpenseList: $expenseList');
-        if (expenseList != []){
-          for (var expense in expenseList) {
-            var id = expense['id'];
-            var name = expense['name'];   
-            var cost = num.parse(expense['cost']); 
-            var tier = expense['tier'];               
-            var expenseType = expense['expense_type']; 
-            var frequency = expense['frequency']; 
-            var date = expense['date']; 
-
-            appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
-            appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
-            appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
-            
-            //CALCULATION: To change
-            //Create colunmn for balance and add value here. WYUEWI
-            appState.balance -= cost; // subtract expense from balance
-            appState.spent += cost; // add expense cost to spent
-            
-              //Different WANT/NEED Symbols
-              if (expenseType == "Want") {
-                appState.wantTotal += cost; //To change
-                Padding(
-                  padding: const EdgeInsets.only(left: 5),
-                  child: appState.wantneedIcon = Icon(
-                    Icons.store_mall_directory,
-                    color: Colors.blueAccent,
-                  ),
-                );
-              
-              } else {
-                appState.needTotal += cost;
-                Padding(
-                  padding: const EdgeInsets.only(left: 5),
-                  child: appState.wantneedIcon = Icon(
-                    Icons.house,
-                    color: Colors.green
-                    ),
-                );
-              }
-            appState.type = appState.wantneedIcon;
-            appState.expenseTypeList.add(appState.type);
-
-            //Different EXPENSE RANKINGS Symbols
-            if (tier == "T1") {
-              Padding(
-                padding: const EdgeInsets.only(left: 5, top: 3),
-                child: appState.rankIcon = Icon(
-                  Icons.looks_one,
-                  color: Color.fromARGB(255, 180, 166, 35),
-                ),
-              );                        
-            } 
-            else if (tier == "T2") {
-                Padding(
-                padding: const EdgeInsets.only(left: 5, top: 3),
-                child: appState.rankIcon = Icon(
-                  Icons.looks_two,
-                  color: Colors.orange
-                  ),
-              );
-            } 
-            else if (tier == "T3") {
-                  Padding(
-                  padding: const EdgeInsets.only(left: 5, top: 3),
-                  child: appState.rankIcon = Icon(
-                  Icons.looks_3,
-                  color: Colors.red
-                  ),
-                  );
-            }
-            appState.rankIcon = appState.rankIcon;
-            appState.rankList.add(appState.rankIcon);
-
-            if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
-              Padding(
-                padding: const EdgeInsets.only(left: 5, top: 3),
-                child: appState.frequencyIcon = Icon(
-                  Icons.one_x_mobiledata_outlined,
-                  color: Colors.blueGrey,
-                ),
-              );
-              }
-            else{ 
+          appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
+          appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
+          appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+          
+          //CALCULATION: To change
+          //Create colunmn for balance and add value here. WYUEWI
+          appState.balance -= cost; // subtract expense from balance
+          appState.spent += cost; // add expense cost to spent
+          
+            //Different WANT/NEED Symbols
+            if (expenseType == "Want") {
+              appState.wantTotal += cost; //To change
               Padding(
                 padding: const EdgeInsets.only(left: 5),
-                child: appState.frequencyIcon = Icon(
-                  Icons.calendar_month,
-                  color: Colors.blueGrey
-                  ),
-              );
-            }
-            appState.expenseFreqList.add(appState.frequencyIcon);
-
-
-
-
-        }//end for 
-      }//end if-empty 
-        
-
-        var incomeList = data['income'];
-        print('IncomeList: $incomeList');
-        if(incomeList != []){
-          for (var income in incomeList) {
-            var id = income['id'];
-            var name = income['name'];   
-            var monthlyEarning = num.parse(income['monthly_earning']); 
-            var frequency = income['frequency']; 
-            var date = income['date']; 
-
-            appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
-            appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
-            appState.incomeidList.add((id.toString()));
-
-            //CALCULATION: To change
-            appState.balance += monthlyEarning; // adds income to remaining balance
-            appState.income += monthlyEarning; // add income value to income
-            
-            if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
-              Padding(
-                padding: const EdgeInsets.only(left: 5, top: 3),
-                child: appState.incomeFrequencyIcon = Icon(
-                  Icons.one_x_mobiledata_outlined,
-                  color: Colors.blueGrey,
+                child: appState.wantneedIcon = Icon(
+                  Icons.store_mall_directory,
+                  color: Colors.blueAccent,
                 ),
               );
-              }
-            else{ 
+            
+            } else {
+              appState.needTotal += cost;
               Padding(
                 padding: const EdgeInsets.only(left: 5),
-                child: appState.incomeFrequencyIcon = Icon(
-                  Icons.calendar_month,
-                  color: Colors.blueGrey
+                child: appState.wantneedIcon = Icon(
+                  Icons.house,
+                  color: Colors.green
                   ),
               );
             }
-            appState.incomeFreqList.add(appState.incomeFrequencyIcon);
-            // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
-            appState.wantPercentage = appState.wantTotal / appState.income;
-            appState.needPercentage = appState.needTotal / appState.income;
-            appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
+          appState.type = appState.wantneedIcon;
+          appState.expenseTypeList.add(appState.type);
+
+          //Different EXPENSE RANKINGS Symbols
+          if (tier == "T1") {
+            Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: appState.rankIcon = Icon(
+                Icons.looks_one,
+                color: Color.fromARGB(255, 180, 166, 35),
+              ),
+            );                        
+          } 
+          else if (tier == "T2") {
+              Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: appState.rankIcon = Icon(
+                Icons.looks_two,
+                color: Colors.orange
+                ),
+            );
+          } 
+          else if (tier == "T3") {
+                Padding(
+                padding: const EdgeInsets.only(left: 5, top: 3),
+                child: appState.rankIcon = Icon(
+                Icons.looks_3,
+                color: Colors.red
+                ),
+                );
           }
+          appState.rankIcon = appState.rankIcon;
+          appState.rankList.add(appState.rankIcon);
+
+          if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+            Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: appState.frequencyIcon = Icon(
+                Icons.one_x_mobiledata_outlined,
+                color: Colors.blueGrey,
+              ),
+            );
+            }
+          else{ 
+            Padding(
+              padding: const EdgeInsets.only(left: 5),
+              child: appState.frequencyIcon = Icon(
+                Icons.calendar_month,
+                color: Colors.blueGrey
+                ),
+            );
+          }
+          appState.expenseFreqList.add(appState.frequencyIcon);
+
+
+
+
+      }//end for 
+    }//end if-empty 
+      
+
+      var incomeList = data['income'];
+      print('IncomeList: $incomeList');
+      if(incomeList != []){
+        for (var income in incomeList) {
+          var id = income['id'];
+          var name = income['name'];   
+          var monthlyEarning = num.parse(income['monthly_earning']); 
+          var frequency = income['frequency']; 
+          var date = income['date']; 
+
+          appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
+          appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
+          appState.incomeidList.add((id.toString()));
+
+          //CALCULATION: To change
+          appState.balance += monthlyEarning; // adds income to remaining balance
+          appState.income += monthlyEarning; // add income value to income
+          
+          if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+            Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: appState.incomeFrequencyIcon = Icon(
+                Icons.one_x_mobiledata_outlined,
+                color: Colors.blueGrey,
+              ),
+            );
+            }
+          else{ 
+            Padding(
+              padding: const EdgeInsets.only(left: 5),
+              child: appState.incomeFrequencyIcon = Icon(
+                Icons.calendar_month,
+                color: Colors.blueGrey
+                ),
+            );
+          }
+          appState.incomeFreqList.add(appState.incomeFrequencyIcon);
+          // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
+          appState.wantPercentage = appState.wantTotal / appState.income;
+          appState.needPercentage = appState.needTotal / appState.income;
+          appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
         }
-      });  //end first populate
+      }
+      //});  //end first populate
 
       double bwants = 0.00;
       double bneeds = 0.00; 
@@ -5478,29 +5506,29 @@ class _BudgetPageState extends State<BudgetPage> {
       double rsavings = 0.00;
       double increasedecrease = 0.00; 
       var currDate = '';
-      
-      var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
-      recPopulate.then((data){
-        var splitList = data['splits'];
-        //print('Message: $splitList');
-        if (splitList != []){  //add to the function months yzm
-          for (var splits in splitList) {
-          
-            bwants = double.parse(splits['wants']); 
-            bneeds = double.parse(splits['needs']); 
-            bsavings = double.parse(splits['savings']); 
-            rwants = double.parse(splits['rwants']); 
-            rneeds = double.parse(splits['rneeds']); 
-            rsavings = double.parse(splits['rsavings']);
-            increasedecrease = double.parse(splits['increase_decrease']); 
-            currDate = splits['date']; 
+        
+      //var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
+      //recPopulate.then((data){
+      var splitList = data['splits'];
+      //print('Message: $splitList');
+      if (splitList != []){  //add to the function months yzm
+        for (var splits in splitList) {
+        
+          bwants = double.parse(splits['wants']); 
+          bneeds = double.parse(splits['needs']); 
+          bsavings = double.parse(splits['savings']); 
+          rwants = double.parse(splits['rwants']); 
+          rneeds = double.parse(splits['rneeds']); 
+          rsavings = double.parse(splits['rsavings']);
+          increasedecrease = double.parse(splits['increase_decrease']); 
+          currDate = splits['date']; 
 
-            print('Splits in loop: $rwants');
-            appState.recommendedWantsPercentage = rwants;
-            appState.recommendedNeedsPercentage = rneeds;
-            appState.recommendedSavingsPercentage = rsavings;
-          }} //End for and if 
-      });
+          print('Splits in loop: $rwants');
+          appState.recommendedWantsPercentage = rwants;
+          appState.recommendedNeedsPercentage = rneeds;
+          appState.recommendedSavingsPercentage = rsavings;
+        }} //End for and if 
+      //});
   }
 
 
@@ -5673,10 +5701,15 @@ class _BudgetPageState extends State<BudgetPage> {
 
                 // PREVIOUS MONTH BUTTON
                 IconButton(
-                  onPressed: (){
+                  onPressed: ()async {
+                  //onPressed: (){
                     appState.clearAllLists();
                     appState.repMonth --;
-                    getMonthData('${appState.repMonth}');
+                    final sendtopop= {'month': '${appState.repMonth}', 'year': '2023'};                                
+                    final monthdata= await  MyApp.of(context).flaskConnect.sendData('month/data', sendtopop);
+                    setState(() {
+                    getMonthData(monthdata);
+                    });
                   }, // Code to go to previous month goes here
 
                   icon: Icon(Icons.arrow_circle_left_outlined),
@@ -5707,11 +5740,14 @@ class _BudgetPageState extends State<BudgetPage> {
             Padding(
               padding: const EdgeInsets.only(right:70),
               child: IconButton(
-                onPressed: (){
+                onPressed: ()async {
                   appState.clearAllLists();
                   appState.repMonth++;
-                  getMonthData('${appState.repMonth}');
-                  
+                  final sendtopop= {'month': '${appState.repMonth}', 'year': '2023'};                                
+                  final monthdata= await  MyApp.of(context).flaskConnect.sendData('month/data', sendtopop);
+                  setState(() {
+                    getMonthData(monthdata);
+                    });
                 }, // Code to go to next month goes here
 
                 icon: Icon(Icons.arrow_circle_right_outlined),
