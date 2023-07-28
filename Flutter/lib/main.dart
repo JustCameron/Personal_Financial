@@ -121,6 +121,7 @@ class MyAppState extends ChangeNotifier {
   bool? check11 = false;
   bool? check12 = false;
   bool? valid_user = false;
+  bool notcurrentmonthchecker = true;
   //Icons
   Icon type = Icon(
     Icons.store_mall_directory,
@@ -238,9 +239,216 @@ class MyAppState extends ChangeNotifier {
     incomeidList.clear();
     balance=0;
     spent=0;
-    //income=0;
-    //beginbalance=0;
+    wantTotal=0;
+    needTotal=0;
+    income=0;
+    beginbalance=0;
+    wantPercentage = 0.00;
+    needPercentage = 0.00;
+    savingsPercentage = 0.00;
+    recommendedWantsPercentage= 0.00;
+    recommendedNeedsPercentage = 0.00;
+    recommendedSavingsPercentage = 0.00;
+    increaseDecreasePercent = 0.00;
+    expenseCost = 0.00;
+    incomeValue = 0.00;
+    
   }
+   void getMonthData(monthdata) {
+    //var populate = MyApp.of(context).flaskConnect.fetchData('month/data');
+    // SENDS TO BACKEND
+      
+      var data = monthdata;
+      //gotttopop.then((data){
+      var expenseList = data['expense'];
+      print('ExpenseList: $expenseList');
+      if (expenseList != []){
+        for (var expense in expenseList) {
+          var id = expense['id'];
+          var name = expense['name'];   
+          var cost = num.parse(expense['cost']); 
+          var tier = expense['tier'];               
+          var expenseType = expense['expense_type']; 
+          var frequency = expense['frequency']; 
+          var date = expense['date']; 
+
+          expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
+          expenseCostList.add((name, cost)); // Separate list for calcualtions
+          expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+          
+          //CALCULATION: To change
+          //Create colunmn for balance and add value here. WYUEWI
+          balance -= cost; // subtract expense from balance
+          spent += cost; // add expense cost to spent
+          
+            //Different WANT/NEED Symbols
+            if (expenseType == "Want") {
+              wantTotal += cost; //To change
+              Padding(
+                padding: const EdgeInsets.only(left: 5),
+                child: wantneedIcon = Icon(
+                  Icons.store_mall_directory,
+                  color: Colors.blueAccent,
+                ),
+              );
+            
+            } else {
+              needTotal += cost;
+              Padding(
+                padding: const EdgeInsets.only(left: 5),
+                child: wantneedIcon = Icon(
+                  Icons.house,
+                  color: Colors.green
+                  ),
+              );
+            }
+          type = wantneedIcon;
+          expenseTypeList.add(type);
+
+          //Different EXPENSE RANKINGS Symbols
+          if (tier == "T1") {
+            Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: rankIcon = Icon(
+                Icons.looks_one,
+                color: Color.fromARGB(255, 180, 166, 35),
+              ),
+            );                        
+          } 
+          else if (tier == "T2") {
+              Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: rankIcon = Icon(
+                Icons.looks_two,
+                color: Colors.orange
+                ),
+            );
+          } 
+          else if (tier == "T3") {
+                Padding(
+                padding: const EdgeInsets.only(left: 5, top: 3),
+                child: rankIcon = Icon(
+                Icons.looks_3,
+                color: Colors.red
+                ),
+                );
+          }
+          rankIcon = rankIcon;
+          rankList.add(rankIcon);
+
+          if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+            Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: frequencyIcon = Icon(
+                Icons.one_x_mobiledata_outlined,
+                color: Colors.blueGrey,
+              ),
+            );
+            }
+          else{ 
+            Padding(
+              padding: const EdgeInsets.only(left: 5),
+              child: frequencyIcon = Icon(
+                Icons.calendar_month,
+                color: Colors.blueGrey
+                ),
+            );
+          }
+          expenseFreqList.add(frequencyIcon);
+
+
+
+
+      }//end for 
+    }//end if-empty 
+      
+
+      var incomeList = data['income'];
+      print('IncomeList: $incomeList');
+      if(incomeList != []){
+        for (var income in incomeList) {
+          var id = income['id'];
+          var name = income['name'];   
+          var monthlyEarning = num.parse(income['monthly_earning']); 
+          var frequency = income['frequency']; 
+          var date = income['date']; 
+
+          incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
+          incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
+          incomeidList.add((id.toString()));
+
+          //CALCULATION: To change
+          balance += monthlyEarning; // adds income to remaining balance
+          income += monthlyEarning; // add income value to income
+          
+          if (frequency == "One-Time"){  //Different INCOME FREQUENCY Symbols
+            Padding(
+              padding: const EdgeInsets.only(left: 5, top: 3),
+              child: incomeFrequencyIcon = Icon(
+                Icons.one_x_mobiledata_outlined,
+                color: Colors.blueGrey,
+              ),
+            );
+            }
+          else{ 
+            Padding(
+              padding: const EdgeInsets.only(left: 5),
+              child: incomeFrequencyIcon = Icon(
+                Icons.calendar_month,
+                color: Colors.blueGrey
+                ),
+            );
+          }
+          incomeFreqList.add(incomeFrequencyIcon);
+          // CALCULATE WANT/NEED/SAVINGS PERCENTAGES [want/need amounts in relation to total income] To Change
+          wantPercentage = wantTotal / income;
+          needPercentage = needTotal / income;
+          savingsPercentage = 100 - (wantPercentage*100 + needPercentage*100);
+
+         
+        }
+      }
+      //});  //end first populate
+
+      double bwants = 0.00;
+      double bneeds = 0.00; 
+      double bsavings = 0.00;
+      double rwants = 0.00;
+      double rneeds = 0.00;
+      double rsavings = 0.00;
+      double increasedecrease = 0.00; 
+      var currDate = '';
+        
+      //var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
+      //recPopulate.then((data){
+      var splitList = data['splits'];
+      //print('Message: $splitList');
+      if (splitList != []){  //add to the function months yzm
+        for (var splits in splitList) {
+        
+          bwants = double.parse(splits['wants']); 
+          bneeds = double.parse(splits['needs']); 
+          bsavings = double.parse(splits['savings']); 
+          rwants = double.parse(splits['rwants']); 
+          rneeds = double.parse(splits['rneeds']); 
+          rsavings = double.parse(splits['rsavings']);
+          increasedecrease = double.parse(splits['increase_decrease']); 
+          currDate = splits['date']; 
+
+          print('Splits in loop: $rwants');
+          recommendedWantsPercentage = rwants;
+          recommendedNeedsPercentage = rneeds;
+          recommendedSavingsPercentage = rsavings;
+
+          // wantPercentage = bwants;
+          // needPercentage = bneeds;
+          // savingsPercentage = bsavings; change
+
+          increaseDecreasePercent = increasedecrease;
+        }} //End for and if 
+      //});
+  }
+
 }
 class MyHomePage extends StatefulWidget {
   @override
@@ -1022,10 +1230,13 @@ class _MainPageState extends State<MainPage> {
                     final leaved= MyApp.of(context).flaskConnect.sendData('logout', leave);
                   
                   if (value == 1){
-                    // if (appState.currMonth != appState.repMonth)
-                    // {
-                    //   chosenIndex = value;
-                    // }
+                    if (appState.currMonth != appState.repMonth && appState.notcurrentmonthchecker)
+                    {
+                      appState.clearAllLists();
+
+                      chosenIndex = value;
+                      appState.notcurrentmonthchecker = false;
+                    }
                   }
                   Navigator.push(
                     context,
@@ -3090,6 +3301,13 @@ class _SignUpPageState extends State<SignUpPage> {
     var appState = context.watch<MyAppState>();
     Widget page;
 
+    // USER PASSWORD AND EMAIL INPUT GETTERS
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+
+    final emailformKey = GlobalKey<FormState>();
+    final passwordformKey = GlobalKey<FormState>();
+
 
     return Scaffold(
       body: Container(
@@ -3215,24 +3433,39 @@ class _SignUpPageState extends State<SignUpPage> {
                 top: 0,
                 bottom: 20,
               ),
-              child: SizedBox(
-                width: 460,
-                height: 50,
-                child: TextField(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
-                    labelText: 'E-Mail',
-                    labelStyle: TextStyle( //Changes label Text Font
-                      fontFamily: 'Nato Sans'
-                    ),
-                    hintText: 'Enter valid E-Mail',
-                    hintStyle: TextStyle( //Changes hint Text Font
-                      fontFamily: 'Nato Sans'
-                    ),
-                  ),
+              child: Form( // Form for validation
+          
+                key: emailformKey,
+                child: TextFormField(
+                  validator: (value){ // Value = What the user inputs
+                    if (value!.isEmpty) {
+                      return 'Email cannot be empty'; // Send this back as Error
+                    }
+                    else if(!value.contains('@') || !value.contains('.')){ // If there is no number in password
+                      return 'Please enter a valid email address. E.g. example@example.com';
+                    }
+                    return null; // If everything is valid, send back 'null' meaning no errors
+                  },
+                  onChanged: (newValue) { // Validate in realtime
+                    emailformKey.currentState!.validate();
+                  },
+
+                  controller: emailController, // For Jon
+                  
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+                labelText: 'E-Mail',
+                labelStyle: TextStyle( //Changes label Text Font
+                  fontFamily: 'Nato Sans'
+                ),
+                hintText: 'Enter valid E-Mail',
+                hintStyle: TextStyle( //Changes hint Text Font
+                  fontFamily: 'Nato Sans'
                 ),
               ),
+            ),
+          ),
             ),
       
       
@@ -3259,25 +3492,41 @@ class _SignUpPageState extends State<SignUpPage> {
                 top: 0,
                 bottom: 0,
               ),
-              child: SizedBox(
-                width: 460,
-                height: 50,
-                child: TextField(
-                  obscureText: true, //Adds the Asteriks for Password confidentiality
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
-                    labelText: 'Password',
-                    labelStyle: TextStyle( //Changes Font
-                      fontFamily: 'Nato Sans'
-                    ),
-                    hintText: 'Enter your Password',
-                    hintStyle: TextStyle( //Changes Font
-                      fontFamily: 'Nato Sans'
-                    ),
-                  ),
+                 child: Form( // Form for validation
+                key: passwordformKey,
+                child: TextFormField(
+                  validator: (value){ // Value = What the user inputs
+                    if (value!.isEmpty) {
+                      return 'Password cannot be empty'; // Send this back as Error
+                    }
+                    else if(num.tryParse(value.replaceAll(RegExp(r'[^0-9,.]'), '')) == null){ // If there is no number in password
+                      return 'Password must contain a number';
+                    }
+                    return null; // If everything is valid, send back 'null' meaning no errors
+                  },
+                  onChanged: (newValue) { // Validate in realtime
+                    passwordformKey.currentState!.validate();
+                  },
+
+                  controller: passwordController, // For Jon
+
+              obscureText: true, //Adds the Asteriks for Password confidentiality
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.lock_open, color: Colors.grey),
+              
+                border: OutlineInputBorder(),
+                floatingLabelBehavior: FloatingLabelBehavior.never, //Removes annoying floating label text on click
+                labelText: 'Password',
+                labelStyle: TextStyle( //Changes Font
+                  fontFamily: 'Nato Sans'
+                ),
+                hintText: 'Enter your Password',
+                hintStyle: TextStyle( //Changes Font
+                  fontFamily: 'Nato Sans'
                 ),
               ),
+            ),
+          ),
             ),
       
             Padding(                          //NEXT BUTTON
@@ -3304,15 +3553,28 @@ class _SignUpPageState extends State<SignUpPage> {
                       //appState.newUserEmail = "";
                       //appState.newUserPassword = "";
 
-                      // ADDS CREDENTIALS TO DB; SENDS TO FLASK
-                        //final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};                                
-                        //final sentCredentials= MyApp.of(context).flaskConnect.sendData('signup', sendCredentials);
-                      //what if the user already in deh/incorrect format?
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => FinancialAccountCreationPage()),
-                      );
-                    }, 
+                        // This is the Error Handling Jon
+                        if (!emailformKey.currentState!.validate()) { // Checks if Email is Valid, then does something
+                          appState.createSpace = 1; // I use this later just to make some space for errors
+                        }
+                        if (!passwordformKey.currentState!.validate()) { // Checks if Password is Valid, then does something
+                          appState.createSpace = 1; // I use this later just to make some space for errors
+                        }
+                        // If Email and Password are valid, Login
+                        if (emailformKey.currentState!.validate() && passwordformKey.currentState!.validate()){
+                            //var login = MyApp.of(context).flaskConnect.fetchData('login');
+                        //final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};
+                          appState.newUserEmail = emailController.text;
+                          appState.newUserPassword = passwordController.text;
+                          print("vale ${appState.newUserEmail}");
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => FinancialAccountCreationPage()),
+                            );
+                        
+                      }//if valid_user 
+                     
+                    }, //onpressed
                     child: Text('Next')),
                 ),
               ),
@@ -3385,6 +3647,12 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
     bool? check11 = false;  //Car
     bool? check12 = false;  //Other
 
+    Map<String,dynamic> checkedgoals = {};
+
+
+
+
+
     return DefaultTabController(
       initialIndex: 0,
       length: 1, //number of tabs
@@ -3416,9 +3684,33 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                     icon: const Icon(Icons.check),
                     iconSize: 25,
                     tooltip: 'Complete',
-                    onPressed: () { //ADD HERE
-                      //appState.newUserEmail,appState.newUserPassword send here
-                      
+                    onPressed: () async { //ADD HERE
+                          if (appState.check1 == true){checkedgoals['House'] = '0.00';}
+                          if (appState.check2 == true){checkedgoals['Retirement'] = '0.00';}
+                          if (appState.check3 == true){checkedgoals['Travel'] = '0.00';}
+                          if (appState.check4 == true){checkedgoals['Electronics'] = '0.00';}
+                          if (appState.check5 == true){checkedgoals['Family'] = '0.00';}
+                          if (appState.check6 == true){checkedgoals['Education'] = '0.00';}
+                          if (appState.check7 == true){checkedgoals['Emergency Funds'] = '0.00';}
+                          if (appState.check8 == true){checkedgoals['Homeware'] = '0.00';}
+                          if (appState.check9 == true){checkedgoals['Shopping'] = '0.00';}
+                          if (appState.check10 == true){checkedgoals['Mortgage'] = '0.00';}
+                          if (appState.check11 == true){checkedgoals['Car'] = '0.00';}
+                          if (appState.check11 == true){checkedgoals['Other'] = '0.00';}
+
+                          //checkedgoals['single':]
+
+                          final sendCredentials= {'email': appState.newUserEmail, 'password': appState.newUserPassword, 'beginning_balance':appState.beginbalance.toStringAsFixed(2)};
+                          final sentCredentials= await MyApp.of(context).flaskConnect.sendData('signup', sendCredentials); 
+                          
+                          
+                          final sdCredentials2= checkedgoals;
+                          final stCredentials2= await MyApp.of(context).flaskConnect.sendData('signup/goals', sdCredentials2); //signup/goals
+                          print(sdCredentials2);
+
+
+                      //appState.newUserEmail,appState.newUserPassword appState.balance send here
+
                       // Go to home page
                       Navigator.push(
                         context, 
@@ -5353,6 +5645,7 @@ class _BudgetPageState extends State<BudgetPage> {
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
     var theme = Theme.of(context);
+    appState.notcurrentmonthchecker = true;
 
     void getMonthData(monthdata) {
     //var populate = MyApp.of(context).flaskConnect.fetchData('month/data');
@@ -5505,6 +5798,7 @@ class _BudgetPageState extends State<BudgetPage> {
           appState.needPercentage = appState.needTotal / appState.income;
           appState.savingsPercentage = 100 - (appState.wantPercentage*100 + appState.needPercentage*100);
 
+          
          
         }
       }
@@ -5542,13 +5836,13 @@ class _BudgetPageState extends State<BudgetPage> {
 
           // appState.wantPercentage = bwants;
           // appState.needPercentage = bneeds;
-          // appState.savingsPercentage = bsavings; change
+          // appState.savingsPercentage = bsavings; //change
 
           appState.increaseDecreasePercent = increasedecrease;
+          print(appState.increaseDecreasePercent);
         }} //End for and if 
       //});
   }
-
 
     List<Color> piechartcolours = [Colors.lightGreen.withOpacity(0.6), Colors.blueAccent.withOpacity(0.6), Colors.deepPurple.withOpacity(0.6)]; //Create list of colours for pie chart
     //String piechartText = "Income \n ${appState.income + appState.beginbalance}"; // Income = Monthly Income + Initial Balance. Shows in chart center
@@ -5583,6 +5877,9 @@ class _BudgetPageState extends State<BudgetPage> {
     double nextMonthNumber = 0.0;
     double prevMonthNumber = 0.0;
     double recommendationMonthNumber = 0.0;
+    
+    //print(appState.balance);
+    //print(appState.increaseDecreasePercent);
 
     if (int.parse(monthNumber) == 1){
       currentMonth = "January";
@@ -5767,6 +6064,7 @@ class _BudgetPageState extends State<BudgetPage> {
                   final monthdata= await  MyApp.of(context).flaskConnect.sendData('month/data', sendtopop);
                   setState(() {
                     getMonthData(monthdata);
+                    
                     });
                 }, // Code to go to next month goes here
 
@@ -6066,7 +6364,8 @@ class _BudgetPageState extends State<BudgetPage> {
                   height: 200,
                   child: LineChart(
                     LineChartData(
-                      gridData: FlGridData(drawHorizontalLine: true, drawVerticalLine: true, horizontalInterval: (appState.balance+1000)/5), // Grid Settings
+                      gridData: FlGridData(drawHorizontalLine: true, drawVerticalLine: true, horizontalInterval:  max(double.parse((appState.balance*(appState.recommendedSavingsPercentage/100)/5).toStringAsFixed(2)),appState.balance/5)), // Grid Settings
+                      //gridData: FlGridData(drawHorizontalLine: true, drawVerticalLine: true, horizontalInterval: (appState.balance+1000)/5), // Grid Settings
                       lineTouchData: LineTouchData( // Background color for when you hover a data point
                         touchTooltipData: LineTouchTooltipData(
                           tooltipBgColor: Colors.white10
@@ -6075,7 +6374,8 @@ class _BudgetPageState extends State<BudgetPage> {
                       titlesData: FlTitlesData(
                         show: true,
                         topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        leftTitles: AxisTitles(sideTitles: SideTitles(reservedSize: 60, showTitles: true, interval: (appState.balance+1000)/5)),
+                        leftTitles: AxisTitles(sideTitles: SideTitles(reservedSize: 60, showTitles: true, interval: max(double.parse((appState.balance*(appState.increaseDecreasePercent/100)/5).toStringAsFixed(2)),appState.balance/5))), // CHANGE THIS WITH ACTUAL PROJECTED VARIABLE
+
                         rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                         bottomTitles: AxisTitles(axisNameSize: 16, axisNameWidget: Text("Months"), sideTitles: SideTitles(reservedSize: 24, showTitles: true, interval: 1)) // Interval - Range between each data point E.g. 6-7-8-9 if interval = 1
 
@@ -6084,7 +6384,7 @@ class _BudgetPageState extends State<BudgetPage> {
                       minX: prevMonthNumber,
                       maxX: 12,
                       // maximum Y value should be 20% greater than projected variable
-                      maxY: (appState.balance+1000)+(appState.balance+1000)*0.20, //REPLACE WITH PROJECTED VARIABLES WHEN YOU CAN
+                      maxY: max(double.parse(((appState.balance*(appState.increaseDecreasePercent/100))+(appState.balance*(appState.increaseDecreasePercent/100))*0.20).toStringAsFixed(2)),appState.balance*1.2), //REPLACE WITH PROJECTED VARIABLES WHEN YOU CAN
                       lineBarsData: [
                         LineChartBarData(
                           color: Colors.deepPurple,
@@ -6092,7 +6392,7 @@ class _BudgetPageState extends State<BudgetPage> {
                             FlSpot(prevMonthNumber,0), // Start
                             FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance
                             FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
-                            FlSpot(recommendationMonthNumber, appState.balance+1000), // REPLACE WITH AVERAGE OF THEIR INCREASE TO GET PROJECTED BALANCE 
+                            FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.increaseDecreasePercent/100))).toStringAsFixed(2))), 
                             //It should look smthn like this once we have an 'increase' variable:
                             // FlSpot(recommendationMonthNumber, appState.balance*appState.increasePercentage),
                           ]
@@ -6110,7 +6410,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     height: 200,
                     child: LineChart(
                       LineChartData(
-                        gridData: FlGridData(drawHorizontalLine: true, drawVerticalLine: true, horizontalInterval: (appState.balance+5000)/5), // Grid Settings
+                        gridData: FlGridData(drawHorizontalLine: true, drawVerticalLine: true, horizontalInterval:  max(double.parse((appState.balance*(appState.recommendedSavingsPercentage/100)/5).toStringAsFixed(2)),appState.balance/5)), // Grid Settings
                         lineTouchData: LineTouchData( // Background color for when you hover a data point
                           touchTooltipData: LineTouchTooltipData(
                             tooltipBgColor: Colors.white10
@@ -6119,7 +6419,7 @@ class _BudgetPageState extends State<BudgetPage> {
                         titlesData: FlTitlesData(
                           show: true,
                           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          leftTitles: AxisTitles(sideTitles: SideTitles(reservedSize: 60, showTitles: true, interval: (appState.balance+5000)/5)), // CHANGE THIS WITH ACTUAL PROJECTED VARIABLE
+                          leftTitles: AxisTitles(sideTitles: SideTitles(reservedSize: 60, showTitles: true, interval: max(double.parse((appState.balance*(appState.recommendedSavingsPercentage/100)/5).toStringAsFixed(2)),appState.balance/5))), // CHANGE THIS WITH ACTUAL PROJECTED VARIABLE
                           rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                           bottomTitles: AxisTitles(axisNameSize: 16, axisNameWidget: Text("Months"), sideTitles: SideTitles(reservedSize: 24, showTitles: true, interval: 1)) // Interval - Range between each data point E.g. 6-7-8-9 if interval = 1
                 
@@ -6128,7 +6428,7 @@ class _BudgetPageState extends State<BudgetPage> {
                         minX: prevMonthNumber,
                         maxX: 12,
                         // maximum Y value should be 20% greater than projected variable
-                        maxY: (appState.balance+5000)+(appState.balance+5000)*0.20, //REPLACE WITH PROJECTED VARIABLES WHEN YOU CAN
+                        maxY: max(double.parse(((appState.balance*(appState.recommendedSavingsPercentage/100))+(appState.balance*(appState.recommendedSavingsPercentage/100))*0.20).toStringAsFixed(2)),appState.balance*1.2), //REPLACE WITH PROJECTED VARIABLES WHEN YOU CAN
                         lineBarsData: [
                           LineChartBarData(
                             color: Colors.deepPurple,
@@ -6136,7 +6436,7 @@ class _BudgetPageState extends State<BudgetPage> {
                               FlSpot(prevMonthNumber,0), // Start
                               FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance
                               FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
-                              FlSpot(recommendationMonthNumber, appState.balance+5000), // REPLACE WITH AVERAGE OF THEIR INCREASE TO GET PROJECTED BALANCE 
+                              FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.recommendedSavingsPercentage/100))).toStringAsFixed(2))), // REPLACE WITH AVERAGE OF THEIR INCREASE TO GET PROJECTED BALANCE 
                               //It should look like this once recommendation works:
                               // FlSpot(recommendationMonthNumber, appState.balance*appState.recommendedSavingsPercentage),
                             ]
@@ -6439,15 +6739,16 @@ class DataConnection {
   Future<Map<String, dynamic>> sendData(String endpoint, Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/$endpoint');
 
-    
-    if (endpoint=='login'){
-      final headers = {"Content-Type": "application/x-www-form-urlencoded"};
-      final response = await http.post(url, body: data);}
+    Map<String, String> headers = {}; // Declare headers variable
 
-
-    // Get the JWT token from SharedPreferences
-    String? jwtToken = await getTokenFromSharedPreferences();
-    final headers = {"Content-Type": "application/x-www-form-urlencoded",'Authorization': 'Bearer $jwtToken'};
+     // Conditionally set headers based on endpoint
+    if (endpoint == 'login' || endpoint == 'signup' || endpoint == 'signup/goals') {
+      headers = {"Content-Type": "application/x-www-form-urlencoded"};
+    } else {
+      // Get the JWT token from SharedPreferences
+      String? jwtToken = await getTokenFromSharedPreferences();
+      headers = {"Content-Type": "application/x-www-form-urlencoded", 'Authorization': 'Bearer $jwtToken'};
+    }
 
     final response = await http.post(url, headers: headers, body: data);
 

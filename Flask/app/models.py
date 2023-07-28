@@ -188,15 +188,16 @@ class Goals(db.Model):
     records = db.Column(db.Integer, primary_key=True)
     #acc_id = db.Column(db.Integer, db.ForeignKey('account.id')) #remove foreign key for demo
     acc_id = db.Column(db.Integer,nullable=False)
-    #name = db.Column(db.String(255))
+    name = db.Column(db.String(255))
     goals = db.Column(db.Numeric(10, 2))
 
-    def __init__(self, acc_id, goals):
+    def __init__(self, acc_id, name, goals):
         self.acc_id = acc_id
+        self.name = name
         self.goals = goals
 
     def __repr__(self):
-        return '<ExpenseCategories %r>' % self.id
+        return '<Goals %r>' % self.name
 
     
 

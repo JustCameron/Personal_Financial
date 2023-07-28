@@ -8,7 +8,7 @@ import os,json,csv,subprocess,time
 import uuid
 from app import app,db,login_manager,jwt
 from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory,jsonify
-from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport
+from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport,Goals
 from werkzeug.utils import secure_filename
 from decimal import Decimal
 from datetime import timedelta, date  #change
@@ -28,7 +28,7 @@ from flask_jwt_extended import create_access_token, jwt_required,get_jwt_identit
 ###
 
 user_id = 0  #set back to 0 after testing
-demo = True
+demo = False
 
 @app.route('/login', methods=['POST', 'GET'])
 def login(): 
@@ -261,26 +261,62 @@ def signup():
     if (request.method=='POST'):
         email = request.form.get('email')
         password = request.form.get('password')
+        beginning_balance = request.form.get('beginning_balance')
+        date = datetime.datetime.now()
+        #fix so that i have a route to check if its present in system
         # Gets the username and password values from the flutter.
-
         #also get  goals and beg_balance here
 
         user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
 
-        if user is None: #checks if user present
-            
-            print(email,password)     
-            newuser = Account(email,password)
-            db.session.add(newuser)
+        if user is None: #checks if user present     
+            print('signup',email,password)     
+            adduser = Account(email,password,beginning_balance,date,date)
+            db.session.add(adduser)
             db.session.commit() #Login user
+
+            newuser = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
+            # Gets user id, load into session
+            login_user(newuser)
+            print("signup user.id in login:",newuser.id)
+            access_token = create_access_token(identity=email)
+            #print(access_token)
             
-            response_data = {'message': 'Success'}
-            print('200')
+            user_id = newuser.id
+            print("signup in login:",user_id)
+            
+            date = datetime.datetime.now()
+            month,year=get_month_year(date)
+            response_data = {'message': 'Success', 'beg_balance': newuser.beginning_balance, 'access_token': access_token,'month':month,'year':year}
+            print('valid user',access_token)
             return jsonify(response_data)
+    
         else:
             print('email already in system!')
-            response_data = {'message': 'Failed'}
+            response_data = {'message': 'error'}
             return jsonify(response_data)
+
+@app.route('/signup/goals', methods=['POST', 'GET'])  
+#@jwt_required()
+def add_goals(): 
+    time.sleep(2)
+    global user_id
+    if (request.method=='POST'):
+        data = request.form.to_dict()
+        for key, value in data.items():
+            print(key, value)
+            goals = Goals(user_id,key,value)
+            db.session.add(goals)
+
+        db.session.commit()
+        response_data = {'message': 'Success'}
+        return jsonify(response_data)
+        
+            # else:
+            #     print('email already in system!')
+            #     response_data = {'message': 'email already in system!'}
+            #     return jsonify(response_data)
+    
 
 @app.route('/remove',methods=['POST']) 
 @jwt_required()
@@ -531,7 +567,7 @@ def recommendation(): #how to simulate this?
 @jwt_required() #remove function....not needed no more as u cant get current splits, so change to last months
 def send_splits(): 
     time.sleep(3) #try removing
-    new_month_update() #test
+    new_month_update() #Check if its a 1st of a month
     global user_id
     recList = [] #get last month splits.
     recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
@@ -572,6 +608,7 @@ def send_splits():
     #recommendation value be close to the original if they dont find a given user....cuz the user 1 rn recommendation kinda ugly
     #tolower() input values for login //done
     #have a threshold for expenses that +higher than max value (change to 700k)
+    #Give a on click buttonto add a given goal to the expense list if reached. Can automatically make it a tier 3 want / need maybe SO as to not recommend to reuce it at the end of the month 
 
 
 @app.route('/month/data',methods=['POST']) #get from db expense list and income list.
@@ -661,7 +698,31 @@ def month_data():
 
 @app.route('/test', methods=['GET'])
 def test():
-    return recommendation()
+    e_list =[]
+    target_year = 2023
+    target_month = 7
+    
+    #expenses=get_expenses(target_month,target_year)
+    expenses = db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+        extract('month', ExpenseList.date) == target_month),ExpenseList.tier == 'T2').all()
+    expenses.extend( db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+        extract('month', ExpenseList.date) == target_month),ExpenseList.tier == 'T3').all())
+    
+    print(expenses)
+    if expenses != []:
+        for g in expenses: 
+            e_list.append({
+                'id': g.id,
+                'name': g.name,
+                'cost': g.cost,
+                'tier': g.tier,
+                'expense_type': g.expense_type,
+                'frequency': g.frequency,
+                'date': g.date
+                        })
+    return jsonify(reduce=e_list)
     
     
 def rollover(): #runs for at the end of the month
@@ -682,6 +743,7 @@ def rollover(): #runs for at the end of the month
     if expenses != []:
         for g in expenses: 
                 roll_list.append({
+                    'roll_type': 'expense',
                     'id': g.id,
                     'name': g.name,
                     'cost': g.cost,
@@ -698,6 +760,7 @@ def rollover(): #runs for at the end of the month
     if incomechannels != []:
         for g in incomechannels: 
             roll_list.append({
+                'roll_type': 'incomechannel',
                 'id': g.id,
                 'name': g.name,
                 'monthly_earning': g.monthly_earning,
@@ -716,24 +779,45 @@ def rollover(): #runs for at the end of the month
         j['date'] = (datetime_objects + timedelta(days=30)).replace(day=1) 
 
         #Add user to expense to next month
-        # if item == 'expense':
-        newExpense = ExpenseList(j['name'],j['cost'],j['tier'],j['expense_type'],j['frequency'],j['date'],user_id)
-        db.session.add(newExpense)
+        if j['roll_type'] == 'expense':
+            newExpense = ExpenseList(j['name'],j['cost'],j['tier'],j['expense_type'],j['frequency'],j['date'],user_id)
+            db.session.add(newExpense)
         # db.session.commit()
-    # else:
-        newIncomeChannel = IncomeChannel(j['name'],j['monthly_earning'],j['frequency'],j['date'],user_id)
-        db.session.add(newIncomeChannel)
-        db.session.commit() 
+        else:
+            newIncomeChannel = IncomeChannel(j['name'],j['monthly_earning'],j['frequency'],j['date'],user_id)
+            db.session.add(newIncomeChannel)
+    db.session.commit() 
     
     
     #add expense to next5 month.
     return jsonify(exp=roll_list)
 
 def reduce_recommendation(): #work  on now
-    target_year = 2023
-    target_month = 7
+    e_list =[]
+    target_month,target_year = get_month_year(datetime.datetime.now())
+    #target_month-=1 for system if its new month.
     
-    expenses=get_expenses(target_month,target_year)
+    #expenses=get_expenses(target_month,target_year)
+    expenses = db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+        extract('month', ExpenseList.date) == target_month),ExpenseList.tier == 'T2').all()
+    expenses.extend( db.session.query(ExpenseList).filter(and_(
+        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
+        extract('month', ExpenseList.date) == target_month),ExpenseList.tier == 'T3').all())
+    
+    print(expenses)
+    if expenses != []:
+        for g in expenses: 
+            e_list.append({
+                'id': g.id,
+                'name': g.name,
+                'cost': g.cost,
+                'tier': g.tier,
+                'expense_type': g.expense_type,
+                'frequency': g.frequency,
+                'date': g.date
+                        })
+    return jsonify(reduce=e_list)
     #for 
 
     
