@@ -146,6 +146,12 @@ class MyAppState extends ChangeNotifier {
     color: Colors.blueGrey,
   );
   //Miscs
+  bool showHelpList = false; // the help button showing the list or not conditional
+  bool showIcon = true; // help button icon conditional
+  bool showCurrentTrajectoryInfo = false; // whether explaination for current trajectory appears or not
+  bool showOptimalTrajectoryInfo = false; // whether explaination for optimal trajectory appears or not
+  bool currentTrajectoryIcon = true;
+  bool optimalTrajectoryIcon = true;
     var createSpace = 0; // used for login to keep things in bound
   double currExpCost = 0.00;
   double currIncEarn = 0.00;
@@ -6051,8 +6057,23 @@ class _BudgetPageState extends State<BudgetPage> {
       recommendationMonthNumber = 2;
       prevMonthNumber = 11;
     }
-
-
+    // Icon values used to pick which Expenses to add to Removal list in Help Icon
+    Icon lowRankExpense1 = Icon(
+      Icons.looks_one,
+      color: Color.fromARGB(255, 180, 166, 35),
+    );
+    Icon lowRankExpense2 = Icon(
+      Icons.looks_two,
+      color: Colors.orange
+      );
+    Icon wantExpense = Icon(
+      Icons.store_mall_directory,
+      color: Colors.blueAccent,
+    );
+    Icon needExpense = Icon(
+      Icons.house,
+      color: Colors.green
+      );
     //Create Data points for pie chart
     Map<String, double> dataMap = {
       "Needs": appState.needTotal,
@@ -6061,7 +6082,9 @@ class _BudgetPageState extends State<BudgetPage> {
     };
     return Scaffold(
       body: SingleChildScrollView(
-        child: Column(
+        child: Stack(
+          children: [
+            Column(
           children: [
             Padding( // REPORT HEADING
               padding: const EdgeInsets.only(
@@ -6121,7 +6144,7 @@ class _BudgetPageState extends State<BudgetPage> {
               child: Align(
                 alignment: Alignment.center,
                 //Sets date to current month - next month
-                child: Text("${currentMonth.toString()} - ${nextMonth.toString()}",
+                child: Text("${currentMonth.toString()} → ${nextMonth.toString()}",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -6389,19 +6412,6 @@ class _BudgetPageState extends State<BudgetPage> {
                           ],
                         ),
 
-                        // HELP BUTTON
-                        TextButton( 
-                          onPressed: () {
-                            setState(() {
-                              // Should bring up table with expenses recommended to remove
-                            });
-                          },
-                          // The icon 
-                          child: Icon(Icons.help,
-                            size: 22,
-                            color: Colors.black,
-                          ),
-                          ),
                       ],
                     )
                       ),
@@ -6418,7 +6428,7 @@ class _BudgetPageState extends State<BudgetPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 170,bottom: 10),
+                    padding: const EdgeInsets.only(left: 170,bottom: 15),
                     child: Text("Current Trajectory",
                       style: TextStyle(
                       fontSize: 20,
@@ -6433,7 +6443,7 @@ class _BudgetPageState extends State<BudgetPage> {
                   child: Align(
                     alignment: Alignment.center,
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 150,bottom: 10),
+                      padding: const EdgeInsets.only(left: 150,bottom: 15),
                       child: Text("Optimal Trajectory",
                         style: TextStyle(
                         fontSize: 20,
@@ -6654,13 +6664,13 @@ class _BudgetPageState extends State<BudgetPage> {
                     bottom: 0,
                   ),
                   child: Align(
-                    alignment: Alignment.centerLeft,
+                    alignment: Alignment.topCenter,
                     child: Padding(
                       padding: const EdgeInsets.only(
                       top: 10,
                       ),
                       child: Align( //align container
-                        alignment: Alignment.centerLeft,
+                        alignment: Alignment.topCenter,
                         child: Container(
                           width: 500,
                           decoration: BoxDecoration(
@@ -6670,7 +6680,7 @@ class _BudgetPageState extends State<BudgetPage> {
                           ),
       
                           child: Align( //align everything inside box
-                            alignment: Alignment.centerLeft,
+                            alignment: Alignment.topCenter,
                             child: SizedBox(
                               width: 920,
                               child: Column(
@@ -6683,7 +6693,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                         child: Text('Income for $currentMonth'),
                                       )),
                                       Expanded(child: Padding( //Received Text
-                                        padding: const EdgeInsets.only(left: 128, top: 10, right: 10),
+                                        padding: const EdgeInsets.only(left: 130, top: 10, right: 10),
                                         child: Text('Received'),
                                       )),
                                     ],
@@ -6695,11 +6705,13 @@ class _BudgetPageState extends State<BudgetPage> {
                                       Row(
                                         children: [
                                           // Income Text
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 15),
-                                            child: Text(income.replaceAll(RegExp(r'[^A-Z,a-z]'),''),
-                                              style: TextStyle(
-                                                //color: Colors.deepOrangeAccent,
+                                          Expanded(
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(left: 15),
+                                              child: Text(income.replaceAll(RegExp(r'[^A-Z,a-z]'),''),
+                                                style: TextStyle(
+                                                  //color: Colors.deepOrangeAccent,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -6707,7 +6719,7 @@ class _BudgetPageState extends State<BudgetPage> {
                                           Expanded(
                                             child: Padding(
                                             padding: const EdgeInsets.only(
-                                              left: 310,
+                                              left: 200,
                                             ),
                                             child: Icon(Icons.attach_money_rounded, 
                                             //color: Colors.deepOrangeAccent,
@@ -6720,8 +6732,9 @@ class _BudgetPageState extends State<BudgetPage> {
                                             child: Align(
                                               alignment: Alignment.centerLeft,
                                               child: Padding(
-                                                padding: const EdgeInsets.only(left: 110,right: 30),
-                                                child: Text(income.replaceAll(RegExp(r'[^0-9,.]'),'') // INCOME Button To Delete
+                                                  padding: const EdgeInsets.only(left: 56,right: 0),
+                                                  child: Text(
+                                                    income.replaceAll(RegExp(r'[^0-9,.]'),'') // INCOME Button To Delete
                                                     
                                                   ),
                                               ),
@@ -6784,6 +6797,248 @@ class _BudgetPageState extends State<BudgetPage> {
             ),
             SizedBox(height: 50,) // Extra space at the bottom to make scrolling better
           ],
+        ),
+          //                                    ALL THE HOVER STUFF IS HERE
+            // CURRENT TRAJECTORY INFO ICON
+            Positioned( // Position it where I want it on the screen
+              top: 472,
+              left: 350,
+              // bottom: 650, // Position it where I want it on screen
+              // right: 120,
+              child: MouseRegion( // Selects area and waits for mouse hovers and exits
+                
+                onEnter: (_) => setState(() { // If the user hovers over the icon, Do this:
+                  appState.showCurrentTrajectoryInfo = true;
+                  appState.currentTrajectoryIcon = false;
+                }),
+                onExit: (_) => setState(() { // If the user's mouse leaves the icon, Do this:
+                  appState.showCurrentTrajectoryInfo = false;
+                  appState.currentTrajectoryIcon = true;
+                }),
+
+                child: Column( // Think of stacks of paper, widgets below others take space of widgets above
+                  children: [
+                    // Appears below next widget in stack
+                    appState.currentTrajectoryIcon ? Icon(Icons.timeline, // Current Trajectory icon if not hovered (Appears)
+                    size: 22,
+                    color: Colors.black,
+                    ): const SizedBox.shrink(), // Current Trajectory icon if hovered (Gone)
+
+                    Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 650),
+                        child: appState.showCurrentTrajectoryInfo ? Container(
+                          color: Colors.white,
+                          width: 350,
+                          // height: 500,
+                          child: Column(
+                            children: [
+                          
+                              // Text under HELP
+                              Text(" Predicted balance for next month at current rate.",
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ) : const SizedBox.shrink(),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+
+            // OPTIMAL TRAJECTORY INFO ICON
+            Positioned( // Position it where I want it on the screen
+              top: 472,
+              right: 222,
+              child: MouseRegion( // Selects area and waits for mouse hovers and exits
+                
+                onEnter: (_) => setState(() { // If the user hovers over the icon, Do this:
+                  appState.showOptimalTrajectoryInfo = true;
+                  appState.optimalTrajectoryIcon = false;
+                }),
+                onExit: (_) => setState(() { // If the user's mouse leaves the icon, Do this:
+                  appState.showOptimalTrajectoryInfo = false;
+                  appState.optimalTrajectoryIcon = true;
+                }),
+                
+                child: Column( // Think of stacks of paper, widgets below others take space of widgets above
+                  children: [
+                    // Appears below next widget in stack
+                    appState.optimalTrajectoryIcon ? Icon(Icons.timeline, // Optimal Trajectory icon if not hovered (Appears)
+                    size: 22,
+                    color: Colors.black,
+                    ): const SizedBox.shrink(), // Optimal Trajectory icon if hovered (Gone)
+
+                    Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 650),
+                        child: appState.showOptimalTrajectoryInfo ? Container(
+                          color: Colors.white,
+                          width: 350,
+                          child: Column(
+                            children: [
+                          
+                              // Text under HELP
+                              Text(" Predicted balance for next month at recommended rate.",
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ) : const SizedBox.shrink(),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+
+            // HELP BUTTON
+            Positioned( // Position it where I want it on the screen
+              top: 350,
+              right: 320,
+              child: MouseRegion( // Selects area and waits for mouse hovers and exits
+                onEnter: (_) => setState(() { // If the user hovers over the help icon, Do this:
+                  appState.showHelpList = true;
+                  appState.showIcon = false;
+                }),
+                onExit: (_) => setState(() { // If the user's mouse leaves the help icon, Do this:
+                  appState.showHelpList = false;
+                  appState.showIcon = true;
+                }),
+                child: Column( // Think of stacks of paper, widgets below others take space of widgets above
+                  children: [
+
+                    // Appears below next widget in stack
+                    appState.showIcon ? Icon(Icons.help, // Help icon if not hovered (Appears)
+                    size: 22,
+                    color: Colors.black,
+                    ): const SizedBox.shrink(), //Help icon if hovered (Gone)
+
+                    Center(
+                      child: AnimatedSwitcher( // Fade animation
+                        duration: const Duration(milliseconds: 650),
+                        child: appState.showHelpList ? Container(
+                          color: Colors.white,
+                          width: 450,
+                          child: Container(
+                            decoration: BoxDecoration( // Border
+                              border: Border.all(width: 1, color: Colors.black.withOpacity(0.5)),
+                              borderRadius: BorderRadius.all(Radius.circular(5))
+                            ),
+                            child: Column(
+                              children: [
+                                // HELP HEADING
+                                Padding(
+                                  padding: const EdgeInsets.only(top:5),
+                                  child: Text("HELP",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Nato Sans',
+                                  ),
+                                  ),
+                                ),
+
+                                Divider(color: Colors.black,), // Horizontal Line
+
+                                // Text under HELP
+                                Padding(
+                                  padding: const EdgeInsets.all(2.0),
+                                  child: Text("Reduce spending on the following expenses for optimal growth.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w200,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ),
+
+                                Divider(color: Colors.grey, height: 5, indent: 10, endIndent: 11),
+
+                                //Help Button Columns
+                                Row(
+                                  children: [
+                                    Expanded(child: Padding( //Income for Current Month
+                                      padding: const EdgeInsets.only(left: 10, top: 10),
+                                      child: Text('Name of Expense            % of Total Expenses             W/N'),
+                                    )),
+                                  ],
+                                ),
+                              
+                                Divider(color: Colors.grey, height: 5, indent: 10, endIndent: 11),
+                              
+                                if (appState.expenseList != []) //Displays Expenses if list isn't emtpy
+                                  for (var tuple in zippedLists)//Get all expenses
+                                    // 1st = Expense, 2nd = Want/Need, 3rd = Rank, 4th = Frequency
+                              
+                                    // If the rank is 1 or 2 and it's a Want, suggesst it for removal
+                                    // If the rank is 1 and it's a Need, also suggest it for removal
+                                    if (tuple.elementAt(2).icon == lowRankExpense1.icon && tuple.elementAt(1).icon == wantExpense.icon || tuple.elementAt(2).icon == lowRankExpense2.icon && tuple.elementAt(1).icon == wantExpense.icon || tuple.elementAt(2).icon == lowRankExpense1.icon && tuple.elementAt(1).icon == needExpense.icon)
+                                      Row(
+                                        children: [
+                                          //  Money Icon and Expense Text Part
+                                            Expanded(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(left: 15),
+                                                child: Text(appState.getExpenseName(tuple.first), //Specifically gets the Name
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+                                          Expanded( //Specifically gets the Percentage
+                                            // flex: 3,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text(((appState.getExpenseCost(tuple.first)/appState.spent)*100).toStringAsFixed(2), //Specifically gets the percentage of total expenses for each expense
+                                                style: TextStyle(
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          // The Percentage Icon
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 50,
+                                            ),
+                                            child: Icon(Icons.percent, 
+                                            size: 14,
+                                            color: Colors.black,
+                                            ),
+                                          ),
+                                          //  Want Need Icon
+                                          Expanded( // Aligns it nicely to the right
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Row(
+                                                children: [
+                                                  Padding(padding: const EdgeInsets.only(left: 50),
+                                                    child: tuple.elementAt(1),
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                
+                              ],
+                            ),
+                          ),
+                        ) : const SizedBox.shrink(),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+          ]
         ),
       ),
     );
@@ -6864,4 +7119,3 @@ class DataConnection {
   }
 
 }
-
