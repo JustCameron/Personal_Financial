@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from decimal import Decimal
 from datetime import timedelta, date  #change
 import datetime
+from dateutil.relativedelta import relativedelta
 from werkzeug.security import check_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
 from sqlalchemy import and_, text, extract
@@ -28,7 +29,7 @@ from flask_jwt_extended import create_access_token, jwt_required,get_jwt_identit
 ###
 
 user_id = 0  #set back to 0 after testing
-demo = False
+demo = False #set back to False after testing
 
 @app.route('/login', methods=['POST', 'GET'])
 def login(): 
@@ -42,6 +43,8 @@ def login():
 
         # Checks the username and password values from the flutter.
         user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
+        user_goals = db.session.query(Goals).filter(and_(
+        Goals.acc_id == user_id,Goals.name=='other')).all()
 
         if user is not None and check_password_hash(user.password, password): #checks password
             # Gets user id, load into session
@@ -258,6 +261,7 @@ def populate():
 
 @app.route('/signup', methods=['POST', 'GET'])  
 def signup(): 
+    global user_id
     if (request.method=='POST'):
         email = request.form.get('email')
         password = request.form.get('password')
@@ -498,7 +502,7 @@ def recommendation(): #how to simulate this?
         sql_script = file.read()
         with app.app_context(): #this runs for all users
             usertbl = db.session.execute(text(sql_script), {'acc_id': user_id}).fetchall() #places user info into AllUsersData format
-
+    print('505',usertbl)
     if usertbl: 
         print(usertbl)
         #last_value = usertbl[-1]
@@ -525,7 +529,7 @@ def recommendation(): #how to simulate this?
                         'Max_Goal': float(j.max_goal),
                         'Increase_Decrease': float(j.increase_decrease)
                     }
-            
+    print('532',users)
         #return jsonify(users)  #should be in the for statement above
 
     bestSplits=None
@@ -571,6 +575,7 @@ def send_splits():
     global user_id
     recList = [] #get last month splits.
     recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
+    #change to get current month
     print('populate user_id',user_id)
     print(recSplits)
     
@@ -732,8 +737,9 @@ def rollover(): #runs for at the end of the month
     # target_year = 2023
     # target_month = 7 
     target_month,target_year = get_month_year(datetime.datetime.now())
-    target_month-=1
-    user_id = 2 #used for testing...remove
+    #target_month-=1 #UNCOMMENT if not testing
+    
+    #user_id = 2 #used for testing...remove
     roll_list = []
 
     #if item == 'expense':
@@ -763,7 +769,7 @@ def rollover(): #runs for at the end of the month
                 'roll_type': 'incomechannel',
                 'id': g.id,
                 'name': g.name,
-                'monthly_earning': g.monthly_earning,
+                'monthly_earning': g.monthly_earning, #
                 'frequency': g.frequency,
                 'date': g.date
             })
@@ -773,10 +779,11 @@ def rollover(): #runs for at the end of the month
         #print(j['date'])
 
         # Convert the timestamps to datetime objects
-        datetime_objects = datetime.strptime(str(j['date']), '%Y-%m-%d %H:%M:%S.%f')
+        #datetime_objects = datetime.strptime(str(j['date']), '%Y-%m-%d %H:%M:%S.%f')
 
         # Add one month to each datetime object
-        j['date'] = (datetime_objects + timedelta(days=30)).replace(day=1) 
+        #j['date'] = (datetime_objects + timedelta(days=30)).replace(day=1) 
+        j['date'] = j['date'] + relativedelta(months=1)
 
         #Add user to expense to next month
         if j['roll_type'] == 'expense':
@@ -795,7 +802,7 @@ def rollover(): #runs for at the end of the month
 def reduce_recommendation(): #work  on now
     e_list =[]
     target_month,target_year = get_month_year(datetime.datetime.now())
-    #target_month-=1 for system if its new month.
+    #target_month-=1 #UNCOMMENT if not for testing   #For previous month
     
     #expenses=get_expenses(target_month,target_year)
     expenses = db.session.query(ExpenseList).filter(and_(
@@ -846,7 +853,7 @@ def new_month_update():  #Runs @login but does update @the start of a new month
     if not demo:
         if current_day==1: #check the current date yzm ##This runs less when comparing other if statement
             # if (current_year != start_year) and (current_month != start_month):
-            if now-user.signup_date >= 30:  #can change value change to something different
+            if now-user.signup_date >= 10:  #can change value change to something different
                 # can send a text ofer to flutter, theres not enought time given to do calculations..
                 recommendation()
                 rollover()

@@ -22,6 +22,7 @@ login_manager.login_view = 'login'
 
 # Configure JWT settings
 app.config['JWT_SECRET_KEY'] = 'secretPP'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600 #change
 jwt = JWTManager(app)
 
 from app import views
