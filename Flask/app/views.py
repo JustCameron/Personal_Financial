@@ -43,8 +43,7 @@ def login():
 
         # Checks the username and password values from the flutter.
         user = db.session.execute(db.select(Account).filter_by(email=email)).scalar()
-        user_goals = db.session.query(Goals).filter(and_(
-        Goals.acc_id == user_id,Goals.name=='other')).all()
+        
 
         if user is not None and check_password_hash(user.password, password): #checks password
             # Gets user id, load into session
@@ -55,11 +54,16 @@ def login():
             
             user_id = user.id
             print("user_id in login:",user_id)
-            
+            user_goals = db.session.query(Goals).filter(and_(Goals.acc_id == user_id,Goals.name=='Other')).scalar()
+
             date = datetime.datetime.now()
             month,year=get_month_year(date)
-            response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year}
-            print('valid user',access_token)
+            if user_goals:
+                response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year, 'goal_amount': user_goals.goals}
+                print('valid user',access_token)
+            else: 
+                response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year}
+                print('valid user',access_token)    
             return jsonify(response_data)
         else:
             response_data = {'message': 'Failed'}
@@ -303,7 +307,7 @@ def signup():
 @app.route('/signup/goals', methods=['POST', 'GET'])  
 #@jwt_required()
 def add_goals(): 
-    time.sleep(2)
+    time.sleep(1)
     global user_id
     if (request.method=='POST'):
         data = request.form.to_dict()
@@ -550,9 +554,10 @@ def recommendation(): #how to simulate this?
         'rsavings': bestSplits[2]
     }
 
-    send_to_rec_table = RecommendationReport(users['Account_ID'],users['Month'],users['Wants%'],users['Needs%'],users['Savings%'],splits['rwants'],splits['rneeds'],splits['rsavings'],users['Increase_Decrease'])
+    send_to_rec_table = RecommendationReport(users['Account_ID'],users['Month'],users['Wants%'],users['Needs%'],users['Savings%'],splits['rwants'],splits['rneeds'],splits['rsavings'],users['Increase_Decrease'],users['Beginning_Balance'])
     userAcc= db.session.execute(db.select(Account).filter_by(id=user_id)).scalar()   
-    userAcc.beginning_balance = users['Current_Balance']
+    userAcc.beginning_balance = users['Current_Balance']  
+    #changes the balance user had at the end of the month to the beginning_balnce of new month
 
     db.session.add(send_to_rec_table) #Adds rec splits + current splits to DB
     db.session.commit() 
@@ -593,8 +598,8 @@ def send_splits():
                 'rwants': f'{round(float(rec.rwants), 2)}',  
                 'rneeds': f'{round(float(rec.rneeds), 2)}', 
                 'rsavings': f'{round(float(rec.rsavings), 2)}',  
-                'increase_decrease': f'{round(float(rec.increase_decrease), 2)}'                 
-                #'increase_decrease': '20.00'
+                'increase_decrease': f'{round(float(rec.increase_decrease), 2)}',     
+                'beginning_balance': f'{round(float(rec.beginning_balance), 2)}' #READD/APPLY            
                             })
                 print(recList)
     return jsonify(splits=recList)
@@ -695,6 +700,7 @@ def month_data():
                 'rneeds': f'{round(float(rec.rneeds), 2)}', 
                 'rsavings': f'{round(float(rec.rsavings), 2)}',  
                 'increase_decrease': f'{round(float(rec.increase_decrease), 2)}', 
+                'beginning_balance': f'{round(float(rec.beginning_balance), 2)}'
                 #'increase_decrease': '20.00'
                             })
     print(jsonify(expense=e_list,income=i_list,splits=recList))
@@ -703,31 +709,34 @@ def month_data():
 
 @app.route('/test', methods=['GET'])
 def test():
-    e_list =[]
-    target_year = 2023
-    target_month = 7
+    global user_id
+    user_id=27
+    recList = [] #get last month splits.
+    recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
+    #change to get current month
+    print('populate user_id',user_id)
+    print(recSplits)
     
-    #expenses=get_expenses(target_month,target_year)
-    expenses = db.session.query(ExpenseList).filter(and_(
-        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
-        extract('month', ExpenseList.date) == target_month),ExpenseList.tier == 'T2').all()
-    expenses.extend( db.session.query(ExpenseList).filter(and_(
-        ExpenseList.acc_id == user_id,extract('year', ExpenseList.date) == target_year,
-        extract('month', ExpenseList.date) == target_month),ExpenseList.tier == 'T3').all())
+    #how to make 
+    if recSplits != []:
+        #recSplits = recSplits[-1]
+        for rec in recSplits: 
+                recList.append({
+            'id': rec.id,
+                'acc_id': rec.acc_id,
+                'date': rec.date,
+                'wants': f'{round(float(rec.wants), 2)}', 
+                'needs': f'{round(float(rec.needs), 2)}',  
+                'savings': f'{round(float(rec.savings), 2)}', 
+                'rwants': f'{round(float(rec.rwants), 2)}',  
+                'rneeds': f'{round(float(rec.rneeds), 2)}', 
+                'rsavings': f'{round(float(rec.rsavings), 2)}',  
+                'increase_decrease': f'{round(float(rec.increase_decrease), 2)}',     
+                'beginning_balance': f'{round(float(rec.beginning_balance), 2)}' #READD/APPLY            
+                            })
+                print(recList)
+    return jsonify(splits=recList)
     
-    print(expenses)
-    if expenses != []:
-        for g in expenses: 
-            e_list.append({
-                'id': g.id,
-                'name': g.name,
-                'cost': g.cost,
-                'tier': g.tier,
-                'expense_type': g.expense_type,
-                'frequency': g.frequency,
-                'date': g.date
-                        })
-    return jsonify(reduce=e_list)
     
     
 def rollover(): #runs for at the end of the month

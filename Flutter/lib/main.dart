@@ -185,6 +185,7 @@ class MyAppState extends ChangeNotifier {
   //For Report
   var repMonth = 0;
   var repYear = 0;
+  double monthBeginAmt = 0.00;
 
   void removeExpense(exp){ //Remove clicked Expense from Expense List
     expenseList.remove(exp);
@@ -261,6 +262,7 @@ class MyAppState extends ChangeNotifier {
     expenseCost = 0.00;
     incomeValue = 0.00;
     valid_user = false;
+    monthBeginAmt = 0.00;
     
   }
    void getMonthData(monthdata) {
@@ -429,6 +431,7 @@ class MyAppState extends ChangeNotifier {
       double rneeds = 0.00;
       double rsavings = 0.00;
       double increasedecrease = 0.00; 
+      double monthBegBalance = 0.00;
       var currDate = '';
         
       //var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
@@ -447,6 +450,10 @@ class MyAppState extends ChangeNotifier {
           rsavings = double.parse(splits['rsavings']);
           increasedecrease = double.parse(splits['increase_decrease']); 
           currDate = splits['date']; 
+          monthBegBalance = double.parse(splits['beginning_balance']); //UNCOMMENT
+          //beginbalance = monthBegBalance; OR
+          monthBeginAmt = monthBegBalance;
+
 
           print('Splits in loop: $rwants');
           recommendedWantsPercentage = rwants;
@@ -525,12 +532,16 @@ class _LoginPageState extends State<LoginPage> {
           );
           final sentCredentials= await MyApp.of(context).flaskConnect.sendData('login', credentials);
           var data = sentCredentials;
+          appState.valid_user =false;
           //sentCredentials.then((data){   
             if (data['message'] == 'Success'){
               String tkn = data['access_token'];
               MyApp.of(context).flaskConnect.saveTokenToSharedPreferences(tkn);
               
               //Gets the current month and year to use for dashboard switching and reprt
+              if (data['goal_amount'] != null){ 
+              appState.savingsgoal = double.parse(data['goal_amount']); 
+              }
               appState.currMonth = data['month'];
               appState.repMonth = data['month'];
               
@@ -538,7 +549,7 @@ class _LoginPageState extends State<LoginPage> {
               appState.repYear = data['year'];
 
               //gets staring balance of user
-              double bBalance = double.parse(data['beg_balance']);                
+              double bBalance = double.parse(data['beg_balance']); //gets beginning_balance of the current month
               //print("The ID sent $id");
               appState.clearAllLists();
               appState.balance += bBalance; //Dis correct?
@@ -752,11 +763,13 @@ class _LoginPageState extends State<LoginPage> {
           //});
 
           print('Splits OutsideLoop: ${appState.recommendedSavingsPercentage}');
-          }
-        Navigator.push(
+            Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => MainPage()), //Goes to main page
         );
+          }
+          else{}
+      
     }
 
     // USER PASSWORD AND EMAIL INPUT GETTERS
@@ -3752,6 +3765,8 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                           if (appState.check11 == true){checkedgoals['Other'] = '${appState.savingsgoal}';}
 
                           //checkedgoals['single':]
+                          print('Usa dem ${checkedgoals['other']}');
+                          checkedgoals['Other'] = '${appState.savingsgoal}';
 
                           final sendCredentials= {'email': appState.newUserEmail, 'password': appState.newUserPassword, 'beginning_balance':appState.beginbalance.toStringAsFixed(2)};
                           final sentCredentials= await MyApp.of(context).flaskConnect.sendData('signup', sendCredentials); 
@@ -5889,6 +5904,7 @@ class _BudgetPageState extends State<BudgetPage> {
       double rsavings = 0.00;
       double increasedecrease = 0.00; 
       var currDate = '';
+      double monthBegBalance = 0.00;
         
       //var recPopulate = MyApp.of(context).flaskConnect.fetchData('splits');
       //recPopulate.then((data){
@@ -5905,6 +5921,9 @@ class _BudgetPageState extends State<BudgetPage> {
           rsavings = double.parse(splits['rsavings']);
           increasedecrease = double.parse(splits['increase_decrease']); 
           currDate = splits['date']; 
+          monthBegBalance = double.parse(splits['beginning_balance']); //UNCOMMENT
+          //appState.beginbalance = monthBegBalance; //OR
+          appState.monthBeginAmt = monthBegBalance;
 
           print('Splits in loop: $rwants');
           appState.recommendedWantsPercentage = rwants;
@@ -6490,9 +6509,10 @@ class _BudgetPageState extends State<BudgetPage> {
                       lineBarsData: [
                         LineChartBarData(
                           color: Colors.deepPurple,
-                          spots:[ // it's (x, y)
+                          spots:[ // it's (x, y)xx
                             FlSpot(prevMonthNumber,0), // Start
-                            FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance
+                            //FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance 
+                            FlSpot(currentMonthNumber, appState.monthBeginAmt), // Current Month's Balance 
                             FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
                             FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.increaseDecreasePercent/100))).toStringAsFixed(2))), 
                             //It should look smthn like this once we have an 'increase' variable:
@@ -6536,7 +6556,8 @@ class _BudgetPageState extends State<BudgetPage> {
                             color: Colors.deepPurple,
                             spots:[ // it's (x, y)
                               FlSpot(prevMonthNumber,0), // Start
-                              FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance
+                              //FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance monthBeginAmt
+                              FlSpot(currentMonthNumber, appState.monthBeginAmt), // Current Month's Balance monthBeginAmt
                               FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
                               FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.recommendedSavingsPercentage/100))).toStringAsFixed(2))), // REPLACE WITH AVERAGE OF THEIR INCREASE TO GET PROJECTED BALANCE 
                               //It should look like this once recommendation works:

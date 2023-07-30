@@ -111,10 +111,11 @@ class RecommendationReport(db.Model):
     rneeds = db.Column(db.Numeric(10, 2))
     rsavings = db.Column(db.Numeric(10, 2)) #create the init function
     increase_decrease = db.Column(db.Numeric(10, 2)) 
+    beginning_balance = db.Column(db.Numeric(10, 2)) 
     #the current balance
     
 
-    def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings,increase_decrease):
+    def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings,increase_decrease,beginning_balance):
         self.acc_id = acc_id
         self.date = date
         self.wants = wants
@@ -124,6 +125,7 @@ class RecommendationReport(db.Model):
         self.rneeds = rneeds
         self.rsavings = rsavings
         self.increase_decrease = increase_decrease
+        self.beginning_balance = beginning_balance
 
     def __repr__(self):
         return '<RecommendationReport %r>' % self.id
