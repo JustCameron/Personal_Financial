@@ -10,13 +10,16 @@ class Account(db.Model):
     beginning_balance = db.Column(db.Numeric(10, 2))
     signup_date = db.Column(db.DateTime)
     last_login_date =db.Column(db.DateTime) 
-
-    def __init__(self, email, password, beginning_balance,signup_date,last_login_date):
+    username = db.Column(db.String(255))
+    def __init__(self, email, password, beginning_balance,signup_date,last_login_date,username):
         self.email = email
         self.password = generate_password_hash(password, method='pbkdf2:sha256')
         self.beginning_balance = beginning_balance
         self.signup_date = signup_date
         self.last_login_date = last_login_date
+        self.username = username
+   
+    
 
     def is_authenticated(self):
         return True
@@ -202,6 +205,39 @@ class Goals(db.Model):
         return '<Goals %r>' % self.name
 
     
+class UserMonthlyData(db.Model): #used for demo
+    __tablename__ = 'user_monthly_data'
+    records = db.Column(db.Integer, primary_key=True)
+    #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
+    acc_id = db.Column(db.Integer)  
+    month = db.Column(db.DateTime)
+    beginning_balance = db.Column(db.Numeric(15, 2))
+    monthly_income = db.Column(db.Numeric(15, 2))
+    monthly_expense = db.Column(db.Numeric(15, 2))
+    current_balance = db.Column(db.Numeric(15, 2))
+    wants_percent = db.Column(db.Numeric(5, 2))
+    needs_percent = db.Column(db.Numeric(5, 2))
+    savings_percent = db.Column(db.Numeric(5, 2))
+    min_goal = db.Column(db.Numeric(10, 2))
+    max_goal = db.Column(db.Numeric(10, 2))
+    increase_decrease = db.Column(db.Numeric(10, 2))
 
+    def __init__(self, acc_id, month, beginning_balance, monthly_income, monthly_expense,
+                current_balance, wants_percent, needs_percent, savings_percent, min_goal, max_goal, increase_decrease):
+        self.acc_id = acc_id
+        self.month = month
+        self.beginning_balance = beginning_balance
+        self.monthly_income = monthly_income
+        self.monthly_expense = monthly_expense
+        self.current_balance = current_balance
+        self.wants_percent = wants_percent
+        self.needs_percent = needs_percent
+        self.savings_percent = savings_percent
+        self.min_goal = min_goal
+        self.max_goal = max_goal
+        self.increase_decrease = increase_decrease
+
+    def __repr__(self):
+        return '<AllUserData %r>' % self.records
         
 

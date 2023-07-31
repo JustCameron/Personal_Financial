@@ -75,6 +75,7 @@ class MyAppState extends ChangeNotifier {
   var incomeFreqList = [];
   var expenseidList = [];
   var incomeidList = [];
+  var expensedatelist = [];
   List<String> creditCardList = <String>['Mastercard', 'Scotia', 'Sagicor', 'Paypal'];
   List<String> marriedOrSingleList = <String>['Single', 'Married'];
   List<String> wantORneed = <String>['Want', 'Need'];
@@ -179,6 +180,8 @@ class MyAppState extends ChangeNotifier {
   double wantTotal = 0.00; // Keep track of total spent on wants - For Jon
   double needTotal = 0.00; // Keep track of total spent on needs - For Jon
 
+  //(appState.wantTotal + appState.needTotal + ((appState.savingsPercentage/100) * appState.income)) - appState.income
+
   //Details for signup()
   String newUserEmail = "";
   String newUserPassword = "";
@@ -193,6 +196,9 @@ class MyAppState extends ChangeNotifier {
   double monthBeginAmt = 0.00;
 
   void removeExpense(exp){ //Remove clicked Expense from Expense List
+    expenseTypeList.remove(expenseList.indexOf(exp));
+    rankList.remove(expenseList.indexOf(exp));
+    expenseFreqList.remove(expenseList.indexOf(exp));
     expenseList.remove(exp);
     //   appState.balance -= appState.expenseCost; // subtract expense from balance
     // appState.spent += appState.expenseCost; // add expense cost to spent
@@ -201,8 +207,10 @@ class MyAppState extends ChangeNotifier {
     print (double.parse(exp.replaceAll(RegExp(r'[^0-9,.]'),'')));
     notifyListeners();
   }
-
+     
+  
    removeIncome(inc){ //Remove clicked Income from Income List
+    incomeFreqList.remove(incomeList.indexOf(inc));
     incomeList.remove(inc);
     balance -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // minus removed income from balance [replaceAll is used here to only get the numbers from the String]
     income -= double.parse(inc.replaceAll(RegExp(r'[^0-9,.]'),'')); // subtract removed income [replaceAll is used here to only get the numbers from the String]
@@ -251,6 +259,7 @@ class MyAppState extends ChangeNotifier {
     incomeFreqList.clear();
     expenseidList.clear();
     incomeidList.clear();
+    //expensedatelist.clear();
     balance=0;
     spent=0;
     wantTotal=0;
@@ -292,6 +301,7 @@ class MyAppState extends ChangeNotifier {
           expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
           expenseCostList.add((name, cost)); // Separate list for calcualtions
           expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+          expensedatelist.add((date.toString()));
           
           //CALCULATION: To change
           //Create colunmn for balance and add value here. WYUEWI
@@ -395,6 +405,7 @@ class MyAppState extends ChangeNotifier {
           incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
           incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
           incomeidList.add((id.toString()));
+          
 
           //CALCULATION: To change
           balance += monthlyEarning; // adds income to remaining balance
@@ -552,7 +563,7 @@ class _LoginPageState extends State<LoginPage> {
               
               appState.currYear = data['year'];
               appState.repYear = data['year'];
-
+              appState.username = data['username'];
               //gets staring balance of user
               double bBalance = double.parse(data['beg_balance']); //gets beginning_balance of the current month
               //print("The ID sent $id");
@@ -579,7 +590,7 @@ class _LoginPageState extends State<LoginPage> {
           //populate.then((data){
             var expenseList = data2['expense'];
             print('ExpenseList: $expenseList');
-            if (expenseList != []){
+            if (expenseList != [] || expenseList!=null){
               for (var expense in expenseList) {
                 var id = expense['id'];
                 var name = expense['name'];   
@@ -592,6 +603,7 @@ class _LoginPageState extends State<LoginPage> {
                 appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
                 appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
                 appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+                appState.expensedatelist.add((date.toString()));
                 
                 //CALCULATION: To change
                 //Create colunmn for balance and add value here. WYUEWI
@@ -682,7 +694,7 @@ class _LoginPageState extends State<LoginPage> {
 
             var incomeList = data2['income'];
             print('IncomeList: $incomeList');
-            if(incomeList != []){
+            if(incomeList != [] || incomeList!=null){
               for (var income in incomeList) {
                 var id = income['id'];
                 var name = income['name'];   
@@ -693,6 +705,7 @@ class _LoginPageState extends State<LoginPage> {
                 appState.incomeList.add(("$name ${monthlyEarning.toStringAsFixed(2)}")); //Interpolation
                 appState.incomeValueList.add((name, monthlyEarning)); // Separate list for calcualtions
                 appState.incomeidList.add((id.toString()));
+                
 
                 //CALCULATION: To change
                 appState.balance += monthlyEarning; // adds income to remaining balance
@@ -733,6 +746,7 @@ class _LoginPageState extends State<LoginPage> {
           double rsavings = 0.00;
           double increasedecrease = 0.00; 
           var currDate = '';
+          double monthBegBalance =0.00;
           
           var recPopulate = await MyApp.of(context).flaskConnect.fetchData('splits');
           
@@ -752,12 +766,14 @@ class _LoginPageState extends State<LoginPage> {
                 rsavings = double.parse(splits['rsavings']);
                 increasedecrease = double.parse(splits['increase_decrease']); 
                 currDate = splits['date']; 
+                monthBegBalance = double.parse(splits['beginning_balance']);
 
                 print('Splits in loop: $rwants');
                 appState.recommendedWantsPercentage = rwants;
                 appState.recommendedNeedsPercentage = rneeds;
                 appState.recommendedSavingsPercentage = rsavings;
                 appState.increaseDecreasePercent = increasedecrease;
+                appState.monthBeginAmt = monthBegBalance;
                 if (increasedecrease == 0.00){
                     appState.increaseDecreasePercent = 10.00;
                     
@@ -1308,15 +1324,16 @@ class HomeMenu extends StatefulWidget{
   @override
   State<HomeMenu> createState() => _HomeMenuState();
 }
+final usdController = TextEditingController();
+final jmdController = TextEditingController();
 
-class _HomeMenuState extends State<HomeMenu> {
+class _HomeMenuState extends State<HomeMenu> {  
   @override
   Widget build(BuildContext context) {
     
     var theme = Theme.of(context);
     var appState = context.watch<MyAppState>();
-    final usdController = TextEditingController();
-    final jmdController = TextEditingController();
+    
     String usd;
     String jmd;
     String jmdToUSD = "USD";
@@ -1370,7 +1387,7 @@ class _HomeMenuState extends State<HomeMenu> {
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: Container( // Puts it in a box to make textalign.center keep it centered on the account icon
-                    width: 200,
+                    width: 100,
                     child: Text("${appState.username}",
                       textAlign: TextAlign.center,
                     style: TextStyle(
@@ -1527,7 +1544,7 @@ class _HomeMenuState extends State<HomeMenu> {
                                   Icon(Icons.arrow_right,
                                     size: 18,
                                   ),
-                                  Text("${appState.getExpenseName(appState.expenseList[appState.expenseList.length - i].toString())}  for  \$${appState.getExpenseCost(appState.expenseList[appState.expenseList.length - i].toString())}  on  ${DateTime.now()}", //Shows each individual variable
+                                  Text("${appState.getExpenseName(appState.expenseList[appState.expenseList.length - i].toString())}  for  \$${appState.getExpenseCost(appState.expenseList[appState.expenseList.length - i].toString())}  on  ${appState.expensedatelist[appState.expensedatelist.length - i]}", //Shows each individual variable
                                   //child: Text(appState.transactionList[count] as String //Shows each entry
                                   style: TextStyle(
                                     fontFamily: 'Open Sans',
@@ -1735,7 +1752,10 @@ class _HomeMenuState extends State<HomeMenu> {
 
   }
 }
-
+  final addExpenseNameController = TextEditingController();
+  final addExpenseCostController = TextEditingController();
+  final addIncomeNameController = TextEditingController();
+  final addIncomeValueController = TextEditingController();
 class DashboardPage extends StatefulWidget{
 
   @override
@@ -1774,13 +1794,10 @@ class _DashboardPageState extends State<DashboardPage> {
       color: Colors.green
       );
 
-    var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList,appState.expenseidList]); //Added a list
+    var zippedLists = IterableZip([appState.expenseList, appState.expenseTypeList, appState.rankList, appState.expenseFreqList,appState.expenseidList]);//appState.expensedatelist]); //Added a list
     var incomeZippedLists = IterableZip([appState.incomeList, appState.incomeFreqList,appState.incomeidList]);
 
-    final addExpenseNameController = TextEditingController();
-    final addExpenseCostController = TextEditingController();
-    final addIncomeNameController = TextEditingController();
-    final addIncomeValueController = TextEditingController();
+  
 
 
     String addExpenseName;
@@ -2766,6 +2783,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                 print("The ID sent $id");
                                 appState.expenseID = id.toString();
                                 appState.expenseidList.add((appState.expenseID));
+                                
+
                                 //});
 
                                 // UPDATE ICONS
@@ -3371,19 +3390,18 @@ class SignUpPage extends StatefulWidget{
 
   @override
   State<SignUpPage> createState() => _SignUpPageState();
-}
-
+}   
+// USER PASSWORD AND EMAIL INPUT GETTERS
+final emailController = TextEditingController();
+final passwordController = TextEditingController();
+final usernameController = TextEditingController();
 class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
     Widget page;
-    final usernameController = TextEditingController();
+    
     final usernameformKey = GlobalKey<FormState>();
-
-    // USER PASSWORD AND EMAIL INPUT GETTERS
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
 
     final emailformKey = GlobalKey<FormState>();
     final passwordformKey = GlobalKey<FormState>();
@@ -3701,6 +3719,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         //final sendCredentials= {'email': 'bob@gmail.com', 'password': 'pass123'};
                           appState.newUserEmail = emailController.text;
                           appState.newUserPassword = passwordController.text;
+                          appState.username = usernameController.text;
                           print("vale ${appState.newUserEmail}");
                           Navigator.push(
                               context,
@@ -3731,6 +3750,13 @@ class FinancialAccountCreationPage extends StatefulWidget{
   @override
   State<FinancialAccountCreationPage> createState() => _FinancialAccountCreationPageState();
 }
+final balanceController = TextEditingController();
+final annualincomeController = TextEditingController();
+final livingexpenseController = TextEditingController();
+final subscriptionexpenseController = TextEditingController();
+final mortgageController = TextEditingController();
+final annualinterestController = TextEditingController();
+final savingsgoalController = TextEditingController();
 
 class _FinancialAccountCreationPageState extends State<FinancialAccountCreationPage> {
   
@@ -3754,13 +3780,7 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
     // User inputs
     String dropdownValue = appState.creditCardList.first;
     DateTime chosenDate = (appState.selectedDate);
-    final balanceController = TextEditingController();
-    final annualincomeController = TextEditingController();
-    final livingexpenseController = TextEditingController();
-    final subscriptionexpenseController = TextEditingController();
-    final mortgageController = TextEditingController();
-    final annualinterestController = TextEditingController();
-    final savingsgoalController = TextEditingController();
+   
     String beginningbalance;
     String annualincome;
     String livingexpense;
@@ -3837,7 +3857,7 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                           print('Usa dem ${checkedgoals['other']}');
                           checkedgoals['Other'] = '${appState.savingsgoal}';
 
-                          final sendCredentials= {'email': appState.newUserEmail, 'password': appState.newUserPassword, 'beginning_balance':appState.beginbalance.toStringAsFixed(2)};
+                          final sendCredentials= {'username':appState.username,'email': appState.newUserEmail, 'password': appState.newUserPassword, 'beginning_balance':appState.beginbalance.toStringAsFixed(2)};
                           final sentCredentials= await MyApp.of(context).flaskConnect.sendData('signup', sendCredentials); 
                           var data = sentCredentials;
                           //sentCredentials.then((data){   
@@ -3852,7 +3872,7 @@ class _FinancialAccountCreationPageState extends State<FinancialAccountCreationP
                               
                               appState.currYear = data['year'];
                               appState.repYear = data['year'];
-
+                              appState.username = data['username'];
                               //gets staring balance of user
                               double bBalance = double.parse(data['beg_balance']);                
                               //print("The ID sent $id");
@@ -5829,6 +5849,7 @@ class _BudgetPageState extends State<BudgetPage> {
           appState.expenseList.add(("$name ${cost.toStringAsFixed(2)}")); //Interpolation
           appState.expenseCostList.add((name, cost)); // Separate list for calcualtions
           appState.expenseidList.add((id.toString())); //Adds id to list //Havent tested yet
+          //appState.expensedatelist.add((date.toString())); //wouldnt need if its jus current month data
           
           //CALCULATION: To change
           //Create colunmn for balance and add value here. WYUEWI
@@ -5994,7 +6015,7 @@ class _BudgetPageState extends State<BudgetPage> {
           //appState.beginbalance = monthBegBalance; //OR
           appState.monthBeginAmt = monthBegBalance;
 
-          print('Splits in loop: $rwants');
+          print('monthBegBalance  ${appState.monthBeginAmt}');
           appState.recommendedWantsPercentage = rwants;
           appState.recommendedNeedsPercentage = rneeds;
           appState.recommendedSavingsPercentage = rsavings;
@@ -6012,12 +6033,21 @@ class _BudgetPageState extends State<BudgetPage> {
     
     List<Color> piechartcolours = [Colors.lightGreen.withOpacity(0.6), Colors.blueAccent.withOpacity(0.6), Colors.deepPurple.withOpacity(0.6)]; //Create list of colours for pie chart
     //String piechartText = "Income \n ${appState.income + appState.beginbalance}"; // Income = Monthly Income + Initial Balance. Shows in chart center
-    String piechartText = "Total Income \n ${appState.income} \n\n Gross Balance \n ${appState.beginbalance+appState.income}"; // Income = Income, Gross Balance = Income + Beginning Balance
+    String piechartText = "Total Income \n ${appState.income} \n\n Overspent \n ${double.parse(((appState.wantTotal + appState.needTotal) +((appState.savingsPercentage/100)*appState.income)).toStringAsFixed(2))-appState.income}"; // Income = Income, Gross Balance = Income + Beginning Balance
 
     // Current Wants/Needs/Savings Percentages
     var wantsPercentage = (appState.wantPercentage*100).toStringAsFixed(2); //toStringAsFixed is pretty much round()
     var needsPercentage = (appState.needPercentage*100).toStringAsFixed(2);
     var savingsPercentage = (appState.savingsPercentage).toStringAsFixed(2);
+    // print('hello');
+    // print((appState.savingsPercentage/100)*appState.income);
+    // print(appState.income);
+    // print(appState.needTotal);
+    // print(appState.wantTotal);
+
+    // print(double.parse(((appState.wantTotal + appState.needTotal) +((appState.savingsPercentage/100)*appState.income)).toStringAsFixed(2))-appState.income);
+    //${double.parse((((appState.savingsPercentage/100)*appState.income)).toStringAsFixed(2))};
+    
 
     // Goal Stuff [rework in future]
     double goalAmount = appState.savingsgoal;
@@ -6585,7 +6615,7 @@ class _BudgetPageState extends State<BudgetPage> {
                           spots:[ // it's (x, y)xx
                             FlSpot(prevMonthNumber,0), // Start
                             //FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance 
-                            FlSpot(currentMonthNumber, appState.monthBeginAmt), // Current Month's Balance 
+                            FlSpot(currentMonthNumber, appState.monthBeginAmt+appState.beginbalance), // Current Month's Balance 
                             FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
                             FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.increaseDecreasePercent/100))).toStringAsFixed(2))), 
                             //It should look smthn like this once we have an 'increase' variable:
@@ -6601,7 +6631,7 @@ class _BudgetPageState extends State<BudgetPage> {
                             spots:[ // it's (x, y)
                               FlSpot(prevMonthNumber,0), // Start
                               //FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance monthBeginAmt
-                              FlSpot(currentMonthNumber, appState.monthBeginAmt), // Current Month's Balance monthBeginAmt
+                              FlSpot(currentMonthNumber, appState.monthBeginAmt+appState.beginbalance), // Current Month's Balance monthBeginAmt
                               FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
                               FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.recommendedSavingsPercentage/100))).toStringAsFixed(2))), // REPLACE WITH AVERAGE OF THEIR INCREASE TO GET PROJECTED BALANCE 
                               //It should look like this once recommendation works:
@@ -7067,16 +7097,17 @@ class _BudgetPageState extends State<BudgetPage> {
                                 Divider(color: Colors.black,), // Horizontal Line
 
                                 // Text under HELP
+                                
                                 Padding(
-                                  padding: const EdgeInsets.all(2.0),
-                                  child: Text("Reduce spending on the following expenses for optimal growth.",
+                                  padding: const EdgeInsets.all(2.0),                                 
+                                  child: appState.savingsPercentage >= 50 ? Text("Looks Like Your On The Right Track! \n You Saved  \$${double.parse((((appState.savingsPercentage/100)*appState.income)).toStringAsFixed(2))}0 This Month",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w200,
                                       fontStyle: FontStyle.italic,
                                       color: Colors.green,
                                     ),
-                                  ),
+                                  ): Text("Reduce spending on the following expenses for optimal growth."),
                                 ),
 
                                 Divider(color: Colors.grey, height: 5, indent: 10, endIndent: 11),
@@ -7093,7 +7124,7 @@ class _BudgetPageState extends State<BudgetPage> {
                               
                                 Divider(color: Colors.grey, height: 5, indent: 10, endIndent: 11),
                               
-                                if (appState.expenseList != []) //Displays Expenses if list isn't emtpy
+                                if (appState.expenseList != []) //Displays Expenses if list isn't emtpy //Put Something here
                                   for (var tuple in zippedLists)//Get all expenses
                                     // 1st = Expense, 2nd = Want/Need, 3rd = Rank, 4th = Frequency
                               

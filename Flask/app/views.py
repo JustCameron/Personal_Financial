@@ -8,7 +8,7 @@ import os,json,csv,subprocess,time
 import uuid
 from app import app,db,login_manager,jwt
 from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory,jsonify
-from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport,Goals
+from app.models import ExpenseCategories,ExpenseList,IncomeChannel,Account,AllUsersData,RecommendationReport,Goals,UserMonthlyData
 from werkzeug.utils import secure_filename
 from decimal import Decimal
 from datetime import timedelta, date  #change
@@ -57,12 +57,12 @@ def login():
             user_goals = db.session.query(Goals).filter(and_(Goals.acc_id == user_id,Goals.name=='Other')).scalar()
 
             date = datetime.datetime.now()
-            month,year=get_month_year(date)
-            if user_goals:
-                response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year, 'goal_amount': user_goals.goals}
+            month,year=get_month_year(date)        
+            if user_goals:              #user.username
+                response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year, 'goal_amount': user_goals.goals, 'username':user.username}
                 print('valid user',access_token)
             else: 
-                response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year}
+                response_data = {'message': 'Success', 'beg_balance': user.beginning_balance, 'access_token': access_token,'month':month,'year':year,'username':user.username}
                 print('valid user',access_token)    
             return jsonify(response_data)
         else:
@@ -81,7 +81,7 @@ def logout():
         user = db.session.execute(db.select(Account).filter_by(id=user_id)).scalar()
         user.last_login_date = datetime.datetime.now()
         db.session.commit()   
-        print("Logged out User:", user_id)
+        print("Logged out User:", user_id, user.username)
         user_id = 0
         print(user_id)
         logout_user()
@@ -207,8 +207,8 @@ def populate():
     #current_user = get_jwt_identity()
     #print("WAH DIS"current_user)
     global user_id
-    e_list = []
-    i_list = []    
+    expenslis = []
+    incomelis = []    
 
     """  """
     curr_date = datetime.datetime.now() #gets current date/time 
@@ -269,6 +269,7 @@ def signup():
     if (request.method=='POST'):
         email = request.form.get('email')
         password = request.form.get('password')
+        username = request.form.get('username')
         beginning_balance = request.form.get('beginning_balance')
         date = datetime.datetime.now()
         #fix so that i have a route to check if its present in system
@@ -279,7 +280,8 @@ def signup():
 
         if user is None: #checks if user present     
             print('signup',email,password)     
-            adduser = Account(email,password,beginning_balance,date,date)
+            #adduser = Account(email,password,beginning_balance,date,date)
+            adduser = Account(email,password,beginning_balance,date,date,username)
             db.session.add(adduser)
             db.session.commit() #Login user
 
@@ -294,8 +296,8 @@ def signup():
             print("signup in login:",user_id)
             
             date = datetime.datetime.now()
-            month,year=get_month_year(date)
-            response_data = {'message': 'Success', 'beg_balance': newuser.beginning_balance, 'access_token': access_token,'month':month,'year':year}
+            month,year=get_month_year(date)  #newuser.username
+            response_data = {'message': 'Success', 'beg_balance': newuser.beginning_balance, 'access_token': access_token,'month':month,'year':year,'username':newuser.username}
             print('valid user',access_token)
             return jsonify(response_data)
     
@@ -451,9 +453,9 @@ def page_not_found(error):
 
 
 #This function returns True if num is within (abs)20% of the refnum 
-def compare(refnum,num):
+def compare(refnum,num,val):
     diff= abs(((refnum-num)/((refnum+num)/2))*100)
-    if diff<=20:
+    if diff<=val:
         return True
     else:
         return False
@@ -475,7 +477,7 @@ def recommend_ratios(users):  #dictionary passes here
 
     #user value is the last entry within the table if tail was used
     user =  users#df.tail(1)
-    lendf= len(df)-20
+    lendf= len(df)-10
     head=df.head(lendf)
     
     refvec1=user 
@@ -484,9 +486,11 @@ def recommend_ratios(users):  #dictionary passes here
     indx=[]
     Monthly_Income=refvec1["Monthly_Income"] # user monthly income
     Monthly_Expense=refvec1["Monthly_Expense"] #user monthly expense
+    user_needs=refvec1["Needs%"] 
     for index,row in vec2.iterrows():
-        if  compare(row["Monthly_Income"],int(Monthly_Income)) and compare(row["Monthly_Expense"],int(Monthly_Expense)) and row["Increase_Decrease"]>0 :
-            indx.append(index)
+        if  compare(row["Monthly_Income"],int(Monthly_Income),20) and compare(row["Monthly_Expense"],int(Monthly_Expense),20)and row["Increase_Decrease"]>0 :
+            if compare(row["Needs%"],int(user_needs),30):
+                indx.append(index)
     if indx != []:
         df_filtered=vec2.filter(items=indx,axis=0)
         needs=int(df_filtered["Needs%"].mean())
@@ -494,6 +498,8 @@ def recommend_ratios(users):  #dictionary passes here
         savings= 100 - (needs+wants)
         return needs,wants,savings
     else:
+        if refvec1["Needs%"] > 50.00:
+            return (20.00,20.00,60.00)
         return (50.00,30.00,20.00)
 
 
@@ -512,11 +518,11 @@ def recommendation(): #how to simulate this?
         #last_value = usertbl[-1]
         for j in usertbl: 
             #month needs to be changed.
-            user_month_data = AllUsersData(j.acc_id,j.month,float(j.beginning_balancee),float(j.monthly_income),
+            user_month_data = UserMonthlyData(j.acc_id,j.month,float(j.beginning_balancee),float(j.monthly_income),
                                           float(j.monthly_expenses),float(j.current_balance),float(j.wants_percentage),
                                           float(j.needs_percentage),float(j.savings),float(j.min_goal),float(j.max_goal),float(j.increase_decrease))
-            #db.session.add(user_month_data) #uncomment
-            #db.session.commit()  ##Dis should happen end of each month
+            db.session.add(user_month_data) #uncomment
+            db.session.commit()  ##Dis should happen end of each month
             #create to add to all_user_data table
 
             users = {   
@@ -575,7 +581,7 @@ def recommendation(): #how to simulate this?
 @app.route('/splits',methods=['GET']) #get from db RecommendationReport Cannot send this @start.because data will be different for each month in reccomendation section.
 @jwt_required() #remove function....not needed no more as u cant get current splits, so change to last months
 def send_splits(): 
-    time.sleep(3) #try removing
+    time.sleep(1) #try removing
     new_month_update() #Check if its a 1st of a month
     global user_id
     recList = [] #get last month splits.
@@ -709,33 +715,7 @@ def month_data():
 
 @app.route('/test', methods=['GET'])
 def test():
-    global user_id
-    user_id=27
-    recList = [] #get last month splits.
-    recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
-    #change to get current month
-    print('populate user_id',user_id)
-    print(recSplits)
-    
-    #how to make 
-    if recSplits != []:
-        #recSplits = recSplits[-1]
-        for rec in recSplits: 
-                recList.append({
-            'id': rec.id,
-                'acc_id': rec.acc_id,
-                'date': rec.date,
-                'wants': f'{round(float(rec.wants), 2)}', 
-                'needs': f'{round(float(rec.needs), 2)}',  
-                'savings': f'{round(float(rec.savings), 2)}', 
-                'rwants': f'{round(float(rec.rwants), 2)}',  
-                'rneeds': f'{round(float(rec.rneeds), 2)}', 
-                'rsavings': f'{round(float(rec.rsavings), 2)}',  
-                'increase_decrease': f'{round(float(rec.increase_decrease), 2)}',     
-                'beginning_balance': f'{round(float(rec.beginning_balance), 2)}' #READD/APPLY            
-                            })
-                print(recList)
-    return jsonify(splits=recList)
+    make_csv()
     
     
     
@@ -746,7 +726,7 @@ def rollover(): #runs for at the end of the month
     # target_year = 2023
     # target_month = 7 
     target_month,target_year = get_month_year(datetime.datetime.now())
-    #target_month-=1 #UNCOMMENT if not testing
+    target_month-=1 #UNCOMMENT if not testing
     
     #user_id = 2 #used for testing...remove
     roll_list = []
@@ -854,8 +834,10 @@ def new_month_update():  #Runs @login but does update @the start of a new month
     # start_month,start_year = get_month_year(user.signup_date)
     # current_month,current_year = get_month_year(datetime.datetime.now()) 
     now=datetime.datetime.now()
+    print("now,isn",now)
     # Get the current date
     current_date = date.today()
+    print('currentday',current_date)
 
     # Extract the day from the current date
     current_day = current_date.day
@@ -873,6 +855,7 @@ def new_month_update():  #Runs @login but does update @the start of a new month
                 return 0 #tell the user dem cah see nthn or send to flutter an empty list
         #return []
     else:
+        print('Running Else condition')
         recommendation()
         rollover()
         #reduce_recommendation()
