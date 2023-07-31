@@ -1756,6 +1756,7 @@ class _HomeMenuState extends State<HomeMenu> {
   final addExpenseCostController = TextEditingController();
   final addIncomeNameController = TextEditingController();
   final addIncomeValueController = TextEditingController();
+
 class DashboardPage extends StatefulWidget{
 
   @override
@@ -2778,6 +2779,9 @@ class _DashboardPageState extends State<DashboardPage> {
                                 final sentExpense= await MyApp.of(context).flaskConnect.sendData('expense/add', sendExpense);
                                 var data = sentExpense;
                               setState((){
+                                addExpenseNameController.text = '' ;
+                                addExpenseCostController.text  = ''; 
+                                   
                                 //sentExpense.then((data){ 
                                 var id = data['message']; 
                                 print("The ID sent $id");
@@ -3340,7 +3344,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                 var data2 = sentIncomeChannel;
                               setState(() {
                                 //sentIncomeChannel.then((data){ 
-                                
+                                addIncomeNameController.text = '';
+                                addIncomeValueController.text = '';
                                 var id = data2['message']; 
                                 print("The ID sent $id");
                                 appState.incomeID = id.toString();
@@ -6617,7 +6622,8 @@ class _BudgetPageState extends State<BudgetPage> {
                             //FlSpot(currentMonthNumber, appState.beginbalance), // Current Month's Balance 
                             FlSpot(currentMonthNumber, appState.monthBeginAmt+appState.beginbalance), // Current Month's Balance 
                             FlSpot(nextMonthNumber, appState.balance), // New Month's Balance
-                            FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.increaseDecreasePercent/100))).toStringAsFixed(2))), 
+                            //FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.increaseDecreasePercent/100))).toStringAsFixed(2))), 
+                            FlSpot(recommendationMonthNumber, double.parse((appState.balance+(appState.balance*(appState.savingsPercentage /100))).toStringAsFixed(2))), 
                             //It should look smthn like this once we have an 'increase' variable:
                             // FlSpot(recommendationMonthNumber, appState.balance*appState.increasePercentage),
                           ]
@@ -7100,31 +7106,37 @@ class _BudgetPageState extends State<BudgetPage> {
                                 
                                 Padding(
                                   padding: const EdgeInsets.all(2.0),                                 
-                                  child: appState.savingsPercentage >= 50 ? Text("Looks Like Your On The Right Track! \n You Saved  \$${double.parse((((appState.savingsPercentage/100)*appState.income)).toStringAsFixed(2))}0 This Month",
+                                  child: appState.savingsPercentage >= 50 ? Text("Looks Like Your On The Right Track! \n You Saved  \$${double.parse((((appState.savingsPercentage/100)*appState.income)).toStringAsFixed(2))}0 This Month. However, keep in mind that depriving yourself of your wants and needs is generally unhealthy.",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w200,
                                       fontStyle: FontStyle.italic,
                                       color: Colors.green,
                                     ),
-                                  ): Text("Reduce spending on the following expenses for optimal growth."),
+                                  ): Text("Reduce spending on the following expenses for optimal growth.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w200,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.green,)),
                                 ),
 
                                 Divider(color: Colors.grey, height: 5, indent: 10, endIndent: 11),
 
                                 //Help Button Columns
-                                Row(
-                                  children: [
-                                    Expanded(child: Padding( //Income for Current Month
-                                      padding: const EdgeInsets.only(left: 10, top: 10),
-                                      child: Text('Name of Expense            % of Total Expenses             W/N'),
-                                    )),
-                                  ],
-                                ),
+                                if (appState.savingsPercentage < 60.00)
+                                  Row(
+                                    children: [
+                                      Expanded(child: Padding( //Income for Current Month
+                                        padding: const EdgeInsets.only(left: 10, top: 10),
+                                        child: Text('Name of Expense            % of Total Expenses             W/N'),
+                                      )),
+                                    ],
+                                  ),
                               
                                 Divider(color: Colors.grey, height: 5, indent: 10, endIndent: 11),
                               
-                                if (appState.expenseList != []) //Displays Expenses if list isn't emtpy //Put Something here
+                                if (appState.expenseList != [] && appState.savingsPercentage < 60.00) //Displays Expenses if list isn't emtpy //Put Something here
                                   for (var tuple in zippedLists)//Get all expenses
                                     // 1st = Expense, 2nd = Want/Need, 3rd = Rank, 4th = Frequency
                               
