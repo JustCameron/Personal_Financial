@@ -475,7 +475,7 @@ def recommendation():
 @jwt_required() #Should get previous month data, but for demo, current month was used.
 def send_splits(): 
     time.sleep(1) 
-    new_month_update() #Checks if its a 1st of a month
+    #new_month_update() #Checks if its a 1st of a month
     global user_id
     recList = [] #get last month splits.
     recSplits = db.session.query(RecommendationReport).filter(RecommendationReport.acc_id == user_id).all()
