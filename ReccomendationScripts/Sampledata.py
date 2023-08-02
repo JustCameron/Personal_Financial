@@ -42,13 +42,13 @@ for x in range(int(ttlfiles)):
     one_month_delta = datetime.timedelta(days=increment)
     month = start_date + one_month_delta
 
-    # Cook up some random floats for beginning balance, and monthly income, accumulate the balance and the i chefed up a random expense value. assuming US money for costs btw
-    beginning_balance = round(random.uniform(10000.00, 100000.00), 2)
-    monthly_income = round(random.uniform(50000.00, 150000.00), 2)
+    # Cook up some random floats for beginning balance, and monthly income, accumulate the balance and the i chefed up a random expense value. 
+    beginning_balance = round(random.uniform(10000.00, 3000000.00), 2) 
+    monthly_income = round(random.uniform(50000.00, 250000.00), 2)
     moneysum = beginning_balance + monthly_income
 
-    # For expenses i couldnt come up with much so i have it do a random value between 60-90% of the total balance above that ill use to get wants and needs ig?
-    spent_expense = random.uniform(60, 90)
+    # For expenses i couldnt come up with much so i have it do a random value between 50-90% of the total balance above that ill use to get wants and needs.
+    spent_expense = random.uniform(50, 90)
     savings = round(100 - spent_expense,2)
     monthly_expenses = round(spent_expense/ 100 * moneysum, 2)
     balance = round(moneysum - monthly_expenses, 2)
@@ -64,7 +64,7 @@ for x in range(int(ttlfiles)):
     numgoals = random.randint(1,3)
 
     for i in range(numgoals):
-        goalval = round(random.uniform(50000.00, 2500000.00), 2)
+        goalval = round(random.uniform(50000.00, 8500000.00), 2)
         goals.append(goalval)
     goals.sort()
 
@@ -94,7 +94,7 @@ for x in range(int(ttlfiles)):
             for i in range(1,len(goals)):
                 writer.writerow(["","","","","","","","","",goals[i]])
 
-        dataperperson= random.randint(3,12)
+        dataperperson= random.randint(3,15)
 
         
         for x in range(dataperperson):
@@ -107,8 +107,9 @@ for x in range(int(ttlfiles)):
         
             # Beginning balance from previous month, along with new income and sum
             beginning_balance=balance
-            monthly_income = round(random.uniform(50000.00, 150000.00), 2)
-            moneysum = beginning_balance + monthly_income
+            #monthly_income
+            monthly_income2 = round(random.uniform(50000.00, 250000.00), 2)
+            moneysum = beginning_balance + monthly_income2
 
             
             spent_expense = random.uniform(60, 90)
@@ -121,7 +122,7 @@ for x in range(int(ttlfiles)):
 
             inc_dec = round((((balance - beginning_balance) / beginning_balance) * 100),2)
 
-            writer.writerow([acc_id,month,beginning_balance,monthly_income,monthly_expenses,balance,wants,needs,savings,mingoal,max(goals),inc_dec])
+            writer.writerow([acc_id,month,beginning_balance,monthly_income2,monthly_expenses,balance,wants,needs,savings,mingoal,max(goals),inc_dec])
             if len(goals) >= 2:
                 for i in range(1,len(goals)):
                     writer.writerow(["","","","","","","","","",goals[i]])

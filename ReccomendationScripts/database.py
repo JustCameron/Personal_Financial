@@ -26,10 +26,10 @@ if dbms == "1":
     cursor.execute("SHOW TABLES")
     tables = [table[0] for table in cursor]
 
-    if 'all_user_data' not in tables:
+    if 'all_users_data' not in tables:
         # Create table 'all_user_data'   
         #DECIMAL(15,2)to  db.Column(db.Numeric(10, 2))    NUMERIC
-        cursor.execute("""CREATE TABLE all_user_data (
+        cursor.execute("""CREATE TABLE all_users_data (
             records INT AUTO_INCREMENT PRIMARY KEY,
             acc_id INT,
             month DATE,
@@ -45,7 +45,7 @@ if dbms == "1":
             increase_decrease DECIMAL(6, 2),
             INDEX (acc_id)
         )""")
-        cursor.execute("ALTER TABLE all_user_data AUTO_INCREMENT = 1")
+        cursor.execute("ALTER TABLE all_users_data AUTO_INCREMENT = 1")
 
     if 'user_goals' not in tables:
         # Create table 'user_goals' with foreign key constraint  #DECIMAL
@@ -53,7 +53,7 @@ if dbms == "1":
             records INT AUTO_INCREMENT PRIMARY KEY,
             acc_id INT,
             goals NUMERIC(15, 2),
-            FOREIGN KEY (acc_id) REFERENCES all_user_data(records)
+            FOREIGN KEY (acc_id) REFERENCES all_users_data(records)
         )""")
         cursor.execute("ALTER TABLE user_goals AUTO_INCREMENT = 1")
 
@@ -142,8 +142,8 @@ elif dbms == "2":
         max_goal = Column(Numeric(15, 2))
         __table_args__ = (UniqueConstraint('records', name='uq_records_id'),)
 
-    class UserGoals(Base):
-        __tablename__ = 'user_goals'
+    class AllUsersGoals(Base):
+        __tablename__ = 'all_users_goals'
         records = Column(Integer, primary_key=True)
         #acc_id = Column(Integer, ForeignKey('all_user_data.records'))  
         acc_id = Column(Integer,nullable=False)
@@ -175,7 +175,7 @@ elif dbms == "2":
                     goals.append((user,row[9]))
                     continue
 
-                all_user_data = AllUsersData(
+                all_users_data = AllUsersData(
                     acc_id=row[0],
                     month=row[1],
                     beginning_balance=row[2],
@@ -194,15 +194,15 @@ elif dbms == "2":
                 goals.append((user,row[9]))
                 if user != int(row[0]):     #if the user is different then increment. 
                     user = int(row[0]) + 1
-                session.add(all_user_data)
+                session.add(all_users_data)
                 session.flush()
-                user_goals_id = all_user_data.records  #Records and not their id???
+                user_goals_id = all_users_data.records  #Records and not their id???
 
             goals = list(set(goals))
             total_goals += len(goals)
 
             for val in goals:
-                user_goals = UserGoals(
+                user_goals = AllUsersGoals(
                     #acc_id=user_goals_id,
                     #goals=val
                     acc_id = val[0],

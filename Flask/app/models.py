@@ -4,9 +4,9 @@ from werkzeug.security import generate_password_hash
 
 class Account(db.Model):
     __tablename__ = 'account'
-    id = db.Column(db.Integer, primary_key=True)   #we should change these to like "PFI1" Personal Finince Indentification  
+    id = db.Column(db.Integer, primary_key=True)   
     email = db.Column(db.String(255),nullable=False)
-    password = db.Column(db.String(255),nullable=False) #add beginning balance here.
+    password = db.Column(db.String(255),nullable=False) 
     beginning_balance = db.Column(db.Numeric(10, 2))
     signup_date = db.Column(db.DateTime)
     last_login_date =db.Column(db.DateTime) 
@@ -40,7 +40,7 @@ class Account(db.Model):
     def __repr__(self):
         return '<Account %r>' % self.email
     
-    #create goals based on one in lin code.
+    
 
 
 class ExpenseList(db.Model):
@@ -67,21 +67,6 @@ class ExpenseList(db.Model):
         return '<ExpenseList %r>' % self.id
 
 
-
-class ExpenseCategories(db.Model):
-    __tablename__ = 'expense_categories'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255))
-    ttl_cost = db.Column(db.Numeric(10, 2))
-
-    def __init__(self, name, ttl_cost):
-        self.name = name
-        self.ttl_cost = ttl_cost
-
-    def __repr__(self):
-        return '<ExpenseCategories %r>' % self.id
-
-    
 
 class IncomeChannel(db.Model):
     __tablename__ = 'income_channel'
@@ -112,10 +97,10 @@ class RecommendationReport(db.Model):
     savings = db.Column(db.Numeric(10, 2))
     rwants = db.Column(db.Numeric(10, 2))
     rneeds = db.Column(db.Numeric(10, 2))
-    rsavings = db.Column(db.Numeric(10, 2)) #create the init function
+    rsavings = db.Column(db.Numeric(10, 2)) 
     increase_decrease = db.Column(db.Numeric(10, 2)) 
     beginning_balance = db.Column(db.Numeric(10, 2)) 
-    #the current balance
+   
     
 
     def __init__(self, acc_id, date, wants, needs, savings, rwants, rneeds, rsavings,increase_decrease,beginning_balance):
@@ -134,27 +119,11 @@ class RecommendationReport(db.Model):
         return '<RecommendationReport %r>' % self.id
 
 
-class AllUsersData(db.Model): #used for demo
-    # __tablename__ = 'all_user_data'
-    # records = db.Column(db.Integer, primary_key=True)
-    # #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
-    # acc_id = db.Column(db.Integer,nullable=False)
-    # start_date = db.Column(db.DateTime,nullable=False)
-    # curr_date = db.Column(db.DateTime)
-    # beginning_balance = db.Column(db.Numeric(15, 2))
-    # monthly_income = db.Column(db.Numeric(15, 2))
-    # monthly_expense = db.Column(db.Numeric(15, 2),nullable=False)
-    # current_balance = db.Column(db.Numeric(15, 2))
-    # wants_percent = db.Column(db.Numeric(5, 2),nullable=False)
-    # needs_percent = db.Column(db.Numeric(5, 2),nullable=False)
-    # savings_percent = db.Column(db.Numeric(5, 2),nullable=False)
-    # min_goal = db.Column(db.Numeric(10, 2))
-    # max_goal = db.Column(db.Numeric(10, 2))
-    # budget_increase = db.Column(db.Numeric(10, 2))
-
+class AllUsersData(db.Model): 
     __tablename__ = 'all_users_data'
     records = db.Column(db.Integer, primary_key=True)
-    #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
+    #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be,
+            #but started user acc_id @30 and 30 not in "Account" thus resulting ina aerror
     acc_id = db.Column(db.Integer)  
     month = db.Column(db.DateTime)
     beginning_balance = db.Column(db.Numeric(15, 2))
@@ -205,7 +174,9 @@ class Goals(db.Model):
         return '<Goals %r>' % self.name
 
     
-class UserMonthlyData(db.Model): #used for demo
+class UserMonthlyData(db.Model): 
+    #used for demo # would be used to store user data to prevent similarity with self 
+    #wh should be done is to have a condition to not choose user with the same id as target user.
     __tablename__ = 'user_monthly_data'
     records = db.Column(db.Integer, primary_key=True)
     #acc_id = db.Column(db.Integer, db.ForeignKey('account.id'),nullable=False)# how it should be, but i started @30 and 30 not in "Account" thus error8
